@@ -1,0 +1,121 @@
+import asyncio
+import csv
+import datetime
+from itemadapter import ItemAdapter
+from aiohttp import ClientSession
+from scrapy import Spider
+from scrapy.crawler import Crawler
+from scrapy_konne.items import DetailDataItem
+from twisted.internet.defer import Deferred
+
+from scrapy_konne.exceptions import DuplicateItem, ExpriedItem
+
+
+class BaseSettingsPipeline:
+    """
+    BaseSettingsPipeline类用于处理爬虫的基本设置。
+    """
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        settings = crawler.settings
+        upload_ip = settings.get("UPLOAD_DATA_IP")
+        cls.uri_is_exist_url = f"http://{upload_ip}/QuChong/ExistUrl"
+        cls.upload_and_filter_url = f"http://{upload_ip}/Data/AddDataAndQuChong"
+        return cls()
+
+    def open_spider(self, spider: Spider):
+        self.session = ClientSession()
+
+    def close_spider(self, spider: Spider):
+        loop = asyncio.get_event_loop()
+        return Deferred.fromFuture(loop.create_task(self.session.close()))
+
+
+class ItemFilterPipeline(BaseSettingsPipeline):
+    """item过滤器，用于过滤重复及超出5天的item。"""
+
+    def is_date_valid(self, date_str):
+        """
+        判断发布时间间隔是否在5天之内
+        :param _t: 发布时间
+        :return: True or False
+        """
+
+        timeNow = datetime.datetime.now()
+        disTime = timeNow - datetime.timedelta(days=5)
+        timeDisStamp = disTime.strftime("%Y-%m-%d %H:%M:%S")
+        if date_str > timeDisStamp:
+            return True
+        return False
+
+    async def is_url_exist(self, url):
+        filter_url = self.uri_is_exist_url
+        params = {"url": url}
+        async with self.session.get(filter_url, params=params) as response:
+            result = await response.json()
+            if isinstance(result, int):
+                return bool(result)
+
+    async def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        url = item_adapter["source_url"]
+        publish_time = item_adapter["publish_time"]
+        if not self.is_date_valid(publish_time):
+            raise ExpriedItem(f"发布时间超过5天，不需要上传: {url}")
+        if await self.is_url_exist(url):
+            raise DuplicateItem(f"url已经存在，不需要上传: {url}")
+        return item
+
+
+class UploadDataPipeline(BaseSettingsPipeline):
+    """
+    数据上传pipeline，用于上传数据到数据库。
+    """
+
+    async def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        data = {
+            "Title": item_adapter["title"],  # 标题
+            "Author": item_adapter["author"],  # 作者
+            "AuthorID": item_adapter["author_id"],  # 作者id
+            "Content": item_adapter["content"],
+            "PublishTime": item_adapter["publish_time"],  # 文章的发布时间
+            "MediaType": item_adapter["media_type"],  # 固定值为8
+            "VideoUrl": item_adapter["video_url"],
+            "Source": item_adapter["source"],  # 来源
+            "SourceUrl": item_adapter["source_url"],  # 网址
+            "PageCrawlID": item_adapter["page_crawl_id"],  # 不同的项目不同
+            "SearchCrawID": item_adapter["search_crawl_id"],  # 不同的项目不同
+        }
+        async with self.session.post(self.upload_and_filter_url, data=data) as response:
+            spider.logger.info(data)
+        return item
+
+
+class CSVWriterPipeline:
+    """
+    CSVWriterPipeline类用于将item写入csv文件。
+    """
+
+    def open_spider(self, spider: Spider):
+        self.file = open("items.csv", "w", encoding="utf-8-sig", newline="")
+        self.writer = csv.writer(self.file)
+
+    def close_spider(self, spider: Spider):
+        self.file.close()
+
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        spider.logger.info(item_adapter)
+        self.writer.writerow(
+            [
+                item_adapter["title"],
+                item_adapter["author"],
+                item_adapter["publish_time"],
+                item_adapter["content"],
+                item_adapter["source"],
+                item_adapter["source_url"],
+            ]
+        )
+        return item
