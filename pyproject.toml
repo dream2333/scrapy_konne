@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scrapy-konne"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["dream2333 <vincentqng@gmail.com>"]
 readme = "README.md"
@@ -11,6 +11,7 @@ scrapy = "^2.11.1"
 aiohttp = {extras = ["speedups"], version = "^3.9.5"}
 redis = {extras = ["hiredis"], version = "^5.0.4"}
 ormsgpack = "^1.5.0"
+pymongo = "^4.7.1"
 
 
 [build-system]
