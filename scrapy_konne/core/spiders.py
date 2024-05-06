@@ -58,7 +58,7 @@ class IncreaseSpider(Spider):
     def from_crawler(cls, crawler, *args, **kwargs):
         spider = super(IncreaseSpider, cls).from_crawler(crawler, *args, **kwargs)
         cls.mongo_client = pymongo.MongoClient(crawler.settings.get("MONGO_URI"))
-        cls.collection = spider.mongo_client["DiscuzScrapy"]["ids_state"]
+        cls.collection = spider.mongo_client["Scrapy"]["ids_state"]
         spider.settings["SPIDER_MIDDLEWARES"][IncreaseSpiderMiddleware] = 0
         return spider
 
