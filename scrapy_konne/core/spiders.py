@@ -19,7 +19,7 @@ class IncreaseSpiderMiddleware:
     def process_spider_output(self, response, result, spider):
         for i in result:
             if isinstance(i, DetailDataItem):
-                spider.cursor = response.meta["cursor_id"]
+                spider.cursor = response.meta["cursor"]
             yield i
 
 
@@ -51,8 +51,8 @@ class IncreaseSpider(Spider):
 
     def start_requests(self) -> Iterable[Request]:
         for i in self.start_ids:
-            url = f"https://share.dz169.com/wap/thread/view-thread/tid/{i}"
-            yield Request(url, dont_filter=True, meta={"cursor_id": i})
+            url = self.url_template.format(cursor=i)
+            yield Request(url, dont_filter=True, meta={"cursor": i})
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):

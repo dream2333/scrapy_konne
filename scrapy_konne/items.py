@@ -34,6 +34,7 @@ class DetailDataItem:
     page_crawl_id: int = 0
     search_crawl_id: int = 0
 
+
 @dataclass
 class HeartbeatLogItem:
     """
