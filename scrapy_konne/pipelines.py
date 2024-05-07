@@ -11,9 +11,35 @@ from scrapy_konne.exceptions import LocalDuplicateItem, LoseItemField, RemoteDup
 from w3lib.html import replace_entities
 
 
-class BaseSettingsPipeline:
+class TimeExpiredCheckPipeline:
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        publish_time = item_adapter["publish_time"]
+        if not publish_time:
+            raise LoseItemField("发布时间字段缺失")
+        time_now = datetime.datetime.now()
+        dis_time = time_now - datetime.timedelta(days=3)
+        time_dis_str = dis_time.strftime("%Y-%m-%d %H:%M:%S")
+        if publish_time < time_dis_str:
+            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item_adapter['source_url']}")
+        return item
+
+
+class LocalDuplicatePipeline:
+    cache = set()
+
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        url = item_adapter["source_url"]
+        if url in self.cache:
+            raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
+        self.cache.add(url)
+        return item
+
+
+class BaseKonneHttpPipeline:
     """
-    BaseSettingsPipeline类用于处理爬虫的基本设置。
+    BaseKonneLogPipeline类用于处理康奈的http日志的基本设置。
     """
 
     @classmethod
@@ -32,33 +58,7 @@ class BaseSettingsPipeline:
         return Deferred.fromFuture(loop.create_task(self.session.close()))
 
 
-class TimeValidPipeline(BaseSettingsPipeline):
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        publish_time = item_adapter["publish_time"]
-        if not publish_time:
-            raise LoseItemField("发布时间字段缺失")
-        time_now = datetime.datetime.now()
-        dis_time = time_now - datetime.timedelta(days=3)
-        time_dis_str = dis_time.strftime("%Y-%m-%d %H:%M:%S")
-        if publish_time < time_dis_str:
-            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item_adapter['source_url']}")
-        return item
-
-
-class LocalDuplicatePipeline(BaseSettingsPipeline):
-    cache = set()
-
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        url = item_adapter["source_url"]
-        if url in self.cache:
-            raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
-        self.cache.add(url)
-        return item
-
-
-class RemoteDuplicatePipeline(BaseSettingsPipeline):
+class RemoteDuplicatePipeline(BaseKonneHttpPipeline):
     async def is_url_exist(self, url):
         filter_url = self.uri_is_exist_url
         params = {"url": url}
@@ -75,14 +75,7 @@ class RemoteDuplicatePipeline(BaseSettingsPipeline):
         return item
 
 
-class ReplaceHtmlEntityPipeline:
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        item_adapter["content"] = replace_entities(item_adapter["content"])
-        return item
-
-
-class UploadDataPipeline(BaseSettingsPipeline):
+class UploadDataPipeline(BaseKonneHttpPipeline):
     """
     数据上传pipeline，用于上传数据到数据库。
     """
@@ -104,6 +97,17 @@ class UploadDataPipeline(BaseSettingsPipeline):
         }
         async with self.session.post(self.upload_and_filter_url, data=data) as response:
             spider.logger.info(data)
+        return item
+
+
+class ReplaceHtmlEntityPipeline:
+    """
+    ReplaceHtmlEntityPipeline类用于替换item中的html实体。
+    """
+
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        item_adapter["content"] = replace_entities(item_adapter["content"])
         return item
 
 
@@ -133,3 +137,4 @@ class CSVWriterPipeline:
             ]
         )
         return item
+

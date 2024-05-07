@@ -1,12 +1,16 @@
 import asyncio
+import os
 from aiohttp import ClientSession
 
+import scrapy
 from scrapy.crawler import Crawler
 from scrapy import signals
 from weakref import WeakKeyDictionary
 from scrapy.utils.log import logger
+from scrapy.crawler import StatsCollector
 
-class HttpLogStats:
+
+class KonneHttpLogExtension:
     """用于向公司接口提交日志"""
 
     def __init__(self, interval: int):
@@ -17,10 +21,10 @@ class HttpLogStats:
         self.loop = asyncio.get_event_loop()
 
     @classmethod
-    def from_crawler(cls: "HttpLogStats", crawler: Crawler):
+    def from_crawler(cls: "KonneHttpLogExtension", crawler: Crawler):
         section_log_ip = crawler.settings.get("SECTION_LOG_IP")
         log_interval = crawler.settings.get("UPLOAD_LOG_INTERVAL")
-        extension: "HttpLogStats" = cls(log_interval)
+        extension: "KonneHttpLogExtension" = cls(log_interval)
         # 添加信号
         crawler.signals.connect(extension.spider_opened, signal=signals.spider_opened)
         crawler.signals.connect(extension.spider_closed, signal=signals.spider_closed)
@@ -85,3 +89,48 @@ class HttpLogStats:
                 if result.get("code") == 0:
                     return True
         return False
+
+
+class KonneWechatBotExtension:
+    def __init__(self, bot_url: str, stats_collector: StatsCollector):
+        self.bot_url = bot_url
+        self.stats_collector = stats_collector
+
+    @classmethod
+    def from_crawler(cls: "KonneWechatBotExtension", crawler: Crawler):
+        bot_url = crawler.settings.get("WECHAT_BOT_URL")
+        stats_collector = crawler.stats
+        extension: "KonneHttpLogExtension" = cls(bot_url, stats_collector)
+        crawler.signals.connect(extension.spider_closed, signal=signals.spider_closed)
+        return extension
+
+    async def spider_closed(self, spider):
+        jobid = os.getenv("SCRAPY_JOB", "N/A")
+        project_name = os.getenv("SCRAPY_PROJECT", "N/A")
+        stats = self.stats_collector.get_stats(spider)
+        item_scraped_count = stats.get("item_scraped_count", 0)
+        error_log = stats.get("log_count/ERROR")
+        retry_max_reached = stats.get("retry/max_reached", 0)
+        item_dropped_count = stats.get("item_dropped_count", 0)
+        total_scraped_count = item_dropped_count + item_scraped_count
+        md_content = f"""<font color=\"warning\">{project_name}-{spider.name}</font>相关统计数据异常，请相关同事注意。\n
+                >jobid:<font color=\"comment\">{jobid}</font>
+                >item总抓取数:<font color=\"comment\">{total_scraped_count}</font>
+                >item成功提交数量:<font color=\"comment\">{item_scraped_count}</font>
+                >item过滤数量:<font color=\"comment\">{item_scraped_count}</font>
+                >错误日志数量（不代表失败请求数）:<font color=\"comment\">{error_log}</font>
+                >最终重试失败请求数:<font color=\"comment\">{retry_max_reached}</font>"""
+        data = {
+            "msgtype": "markdown",
+            "markdown": {"content": md_content},
+            "mentioned_list": ["@all"],
+        }
+        if total_scraped_count == 0 or retry_max_reached > 0:
+            logger.info(f"爬虫{spider.name}有异常状态，已发送到企业微信")
+            logger.info(md_content)
+            async with ClientSession() as session:
+                async with session.post(self.bot_url, json=data) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        if result.get("errcode") == 0:
+                            return True
