@@ -73,7 +73,7 @@ class IncreaseSpider(Spider):
             meta = self.collection.find_one({"site_id": self.site_id})
             self._cursor = meta["cursor"]
             self._previous_round_cursor = self._cursor
-            self.logger.info(f"数据库id游标: {self._cursor}")
+            self.logger.info(f"数据库id游标: {self._cursor}，前后偏移范围：{self.offset}")
         return self._cursor  # getter方法
 
     @cursor.setter

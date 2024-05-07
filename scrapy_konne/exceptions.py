@@ -6,5 +6,8 @@ class SilentDropItem(DropItem):
 class ExpriedItem(SilentDropItem):
     pass
 
-class DuplicateItem(SilentDropItem):
+class LocalDuplicateItem(SilentDropItem):
+    pass
+
+class RemoteDuplicateItem(SilentDropItem):
     pass

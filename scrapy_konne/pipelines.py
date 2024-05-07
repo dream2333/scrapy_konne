@@ -8,7 +8,7 @@ from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem
 from twisted.internet.defer import Deferred
 
-from scrapy_konne.exceptions import DuplicateItem, ExpriedItem
+from scrapy_konne.exceptions import LocalDuplicateItem, RemoteDuplicateItem, ExpriedItem
 
 
 class BaseSettingsPipeline:
@@ -34,6 +34,8 @@ class BaseSettingsPipeline:
 
 class ItemFilterPipeline(BaseSettingsPipeline):
     """item过滤器，用于过滤重复及超出5天的item。"""
+
+    cache = set()
 
     def is_date_valid(self, date_str):
         """
@@ -61,10 +63,14 @@ class ItemFilterPipeline(BaseSettingsPipeline):
         item_adapter: DetailDataItem = ItemAdapter(item)
         url = item_adapter["source_url"]
         publish_time = item_adapter["publish_time"]
+        if url in self.cache:
+            raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
+        self.cache.add(url)
         if not self.is_date_valid(publish_time):
             raise ExpriedItem(f"发布时间超过5天，不需要上传: {url}")
         if await self.is_url_exist(url):
-            raise DuplicateItem(f"url已经存在，不需要上传: {url}")
+            raise RemoteDuplicateItem(f"url已经在去重库存在，不需要上传: {url}")
+
         return item
 
 
