@@ -1,5 +1,7 @@
 import asyncio
+import datetime
 import os
+from zoneinfo import ZoneInfo
 from aiohttp import ClientSession
 
 import scrapy
@@ -105,9 +107,15 @@ class KonneWechatBotExtension:
         return extension
 
     async def spider_closed(self, spider):
-        jobid = os.getenv("SCRAPY_JOB", "N/A")
+        # 获取本地时区
+        local_tz = ZoneInfo("Asia/Shanghai")
+        # 将 UTC 时间转换为本地时间
+        jobid = os.getenv("SCRAPYD_JOB", "N/A")
         project_name = os.getenv("SCRAPY_PROJECT", "N/A")
         stats = self.stats_collector.get_stats(spider)
+        start_time = stats.get("start_time")
+        finish_time = stats.get("finish_time")
+        elapsed_time_seconds = stats.get("elapsed_time_seconds")
         item_scraped_count = stats.get("item_scraped_count", 0)
         error_log = stats.get("log_count/ERROR")
         retry_max_reached = stats.get("retry/max_reached", 0)
@@ -115,11 +123,12 @@ class KonneWechatBotExtension:
         total_scraped_count = item_dropped_count + item_scraped_count
         md_content = f"""<font color=\"warning\">{project_name}-{spider.name}</font>相关统计数据异常，请相关同事注意。\n
                 >jobid:<font color=\"comment\">{jobid}</font>
-                >item总抓取数:<font color=\"comment\">{total_scraped_count}</font>
-                >item成功提交数量:<font color=\"comment\">{item_scraped_count}</font>
-                >item过滤数量:<font color=\"comment\">{item_scraped_count}</font>
-                >错误日志数量（不代表失败请求数）:<font color=\"comment\">{error_log}</font>
-                >最终重试失败请求数:<font color=\"comment\">{retry_max_reached}</font>"""
+                >开始时间:<font color=\"comment\">{start_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")}</font>
+                >结束时间:<font color=\"comment\">{finish_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")}</font>
+                >总耗时:<font color=\"comment\">{elapsed_time_seconds}秒</font>
+                >item提交/过滤/总计:<font color=\"comment\">{item_scraped_count}/{item_scraped_count}/{total_scraped_count}</font>
+                >失败请求/错误日志:<font color=\"error\">{retry_max_reached}/{error_log}</font>
+                """
         data = {
             "msgtype": "markdown",
             "markdown": {"content": md_content},
@@ -134,3 +143,5 @@ class KonneWechatBotExtension:
                         result = await response.json()
                         if result.get("errcode") == 0:
                             return True
+        else:
+            logger.info(f"爬虫{spider.name}正常结束，无需发送到企业微信")
