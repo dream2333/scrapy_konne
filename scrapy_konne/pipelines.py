@@ -59,6 +59,14 @@ class LocalDuplicatePipeline(BaseSettingsPipeline):
 
 
 class RemoteDuplicatePipeline(BaseSettingsPipeline):
+    async def is_url_exist(self, url):
+        filter_url = self.uri_is_exist_url
+        params = {"url": url}
+        async with self.session.get(filter_url, params=params) as response:
+            result = await response.json()
+            if isinstance(result, int):
+                return bool(result)
+
     async def process_item(self, item, spider: Spider):
         item_adapter: DetailDataItem = ItemAdapter(item)
         url = item_adapter["source_url"]
