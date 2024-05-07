@@ -3,6 +3,7 @@ import pymongo
 from scrapy_konne.items import DetailDataItem
 from scrapy import Request, Spider
 from scrapy.crawler import Crawler
+from scrapy.exceptions import CloseSpider
 
 
 class DistrubuteSpiderMixin:
@@ -71,6 +72,8 @@ class IncreaseSpider(Spider):
     def cursor(self) -> int:
         if self._cursor is None:
             meta = self.collection.find_one({"site_id": self.site_id})
+            if meta is None:
+                raise CloseSpider("请先在数据库中初始化游标")
             self._cursor = meta["cursor"]
             self._previous_round_cursor = self._cursor
             self.logger.info(f"数据库id游标: {self._cursor}，前后偏移范围：{self.offset}")

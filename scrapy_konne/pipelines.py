@@ -7,8 +7,8 @@ from scrapy import Spider
 from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem
 from twisted.internet.defer import Deferred
-
-from scrapy_konne.exceptions import LocalDuplicateItem, RemoteDuplicateItem, ExpriedItem
+from scrapy_konne.exceptions import LocalDuplicateItem, LoseItemField, RemoteDuplicateItem, ExpriedItem
+from w3lib.html import replace_entities
 
 
 class BaseSettingsPipeline:
@@ -32,45 +32,45 @@ class BaseSettingsPipeline:
         return Deferred.fromFuture(loop.create_task(self.session.close()))
 
 
-class ItemFilterPipeline(BaseSettingsPipeline):
-    """item过滤器，用于过滤重复及超出5天的item。"""
+class TimeValidPipeline(BaseSettingsPipeline):
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        publish_time = item_adapter["publish_time"]
+        if not publish_time:
+            raise LoseItemField("发布时间字段缺失")
+        time_now = datetime.datetime.now()
+        dis_time = time_now - datetime.timedelta(days=3)
+        time_dis_str = dis_time.strftime("%Y-%m-%d %H:%M:%S")
+        if publish_time < time_dis_str:
+            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item_adapter['source_url']}")
+        return item
 
+
+class LocalDuplicatePipeline(BaseSettingsPipeline):
     cache = set()
 
-    def is_date_valid(self, date_str):
-        """
-        判断发布时间间隔是否在5天之内
-        :param _t: 发布时间
-        :return: True or False
-        """
-
-        timeNow = datetime.datetime.now()
-        disTime = timeNow - datetime.timedelta(days=5)
-        timeDisStamp = disTime.strftime("%Y-%m-%d %H:%M:%S")
-        if date_str > timeDisStamp:
-            return True
-        return False
-
-    async def is_url_exist(self, url):
-        filter_url = self.uri_is_exist_url
-        params = {"url": url}
-        async with self.session.get(filter_url, params=params) as response:
-            result = await response.json()
-            if isinstance(result, int):
-                return bool(result)
-
-    async def process_item(self, item, spider: Spider):
+    def process_item(self, item, spider: Spider):
         item_adapter: DetailDataItem = ItemAdapter(item)
         url = item_adapter["source_url"]
-        publish_time = item_adapter["publish_time"]
         if url in self.cache:
             raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
         self.cache.add(url)
-        if not self.is_date_valid(publish_time):
-            raise ExpriedItem(f"发布时间超过5天，不需要上传: {url}")
+        return item
+
+
+class RemoteDuplicatePipeline(BaseSettingsPipeline):
+    async def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        url = item_adapter["source_url"]
         if await self.is_url_exist(url):
             raise RemoteDuplicateItem(f"url已经在去重库存在，不需要上传: {url}")
+        return item
 
+
+class ReplaceHtmlEntityPipeline:
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        item_adapter["content"] = replace_entities(item_adapter["content"])
         return item
 
 
