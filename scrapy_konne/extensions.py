@@ -127,7 +127,7 @@ class KonneWechatBotExtension:
                 >结束时间:<font color=\"comment\">{finish_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")}</font>
                 >总耗时:<font color=\"comment\">{elapsed_time_seconds}秒</font>
                 >item提交/过滤/总计:<font color=\"comment\">{item_scraped_count}/{item_scraped_count}/{total_scraped_count}</font>
-                >失败请求/错误日志:<font color=\"error\">{retry_max_reached}/{error_log}</font>
+                >失败请求/错误日志:<font color=\"comment\">{retry_max_reached}/{error_log}</font>
                 """
         data = {
             "msgtype": "markdown",
