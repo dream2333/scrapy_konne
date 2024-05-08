@@ -145,8 +145,8 @@ class KonneWechatBotExtension:
             col_widths = [max(wcswidth(str(x)) for x in col) for col in zip(*data, headers)]
             table = tabulate(data, headers=headers, tablefmt="simple", colalign=("left",) * len(col_widths))
             md_content = f"""
-<font color="warning">{project_name}-{spider.name}-{jobid}</font>相关统计数据异常，请相关同事注意。
-
+<font color="warning">{project_name}-{spider.name}</font>相关统计数据异常，请相关同事注意。
+<font color="comment">{jobid}</font>
 
 开始: <font color="comment">{start_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")}</font>
 
