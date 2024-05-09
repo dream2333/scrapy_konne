@@ -34,6 +34,8 @@ class IncreaseSpider(Spider):
 
     url_template: str
     """url模板，格式化时传入cursor，eg:"https://example.com?tid={cursor}"""
+    cursor_name: str = "cursor"
+    """数据库中游标的字段名，默认为cursor"""
 
     def __init__(self, name: str | None = None, **kwargs: Any):
         super().__init__(name, **kwargs)
@@ -47,8 +49,8 @@ class IncreaseSpider(Spider):
             )
         elif len(self.offset) != 2:
             raise ValueError("offset必须是一个长度为2的列表、元组、或切片，代表向前探查数量和向后探查数量")
-        elif not getattr(self, "url_template", None):
-            raise ValueError("必须设置url_template来确定自增的url模板")
+        elif not getattr(self, "url_template", None) and self.start_requests == IncreaseSpider.start_requests:
+            raise ValueError("url_template和start_requests之中至少有一个需要被重载")
 
     def start_requests(self) -> Iterable[Request]:
         for i in self.start_ids:
@@ -65,6 +67,7 @@ class IncreaseSpider(Spider):
 
     @property
     def start_ids(self) -> Iterable[int]:
+        """获取游标前后范围内的id"""
         for i in range(self.cursor - self.offset[0], self.cursor + self.offset[1]):
             yield i
 
@@ -74,7 +77,7 @@ class IncreaseSpider(Spider):
             meta = self.collection.find_one({"site_id": self.site_id})
             if meta is None:
                 raise CloseSpider("请先在数据库中初始化游标")
-            self._cursor = meta["cursor"]
+            self._cursor = meta[self.cursor_name]
             self._previous_round_cursor = self._cursor
             self.logger.info(f"数据库id游标: {self._cursor}，前后偏移范围：{self.offset}")
         return self._cursor  # getter方法
@@ -88,7 +91,9 @@ class IncreaseSpider(Spider):
     def close(self):
         try:
             if self._has_greater_cursor:
-                self.collection.update_one({"site_id": self.site_id}, {"$set": {"cursor": self.cursor}})
+                self.collection.update_one(
+                    {"site_id": self.site_id}, {"$set": {self.cursor_name: self.cursor}}
+                )
                 self.logger.info(
                     f"更新游标到: {self.cursor}, 与上轮差值 +{self.cursor-self._previous_round_cursor}"
                 )
