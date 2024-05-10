@@ -1,101 +1,84 @@
 import asyncio
+from collections import OrderedDict
+import logging
+import time
 
 import redis.asyncio as redis
 from scrapy.crawler import Crawler
-from scrapy.utils.log import logger
 from scrapy.core.downloader.handlers.http11 import TunnelError
+from twisted.internet.error import TimeoutError
+
+logger = logging.getLogger(__name__)
 
 
+class ProxyPoolDownloaderMiddleware:
 
-
-class ProxyPoolNoBufferDownloaderMiddleware:
-    """使用代理池，但取出时不使用缓冲池，直接从redis中取出"""
-
-    def __init__(self, redis_url) -> None:
+    def __init__(self, redis_url, prefetch_nums, expired_duration_ms, empty_wait_time) -> None:
         self.redis_client = redis.Redis.from_url(redis_url, protocol=3)
+        self.proxy_change_exception = [
+            TunnelError,
+            TimeoutError,
+        ]
+        self._proxies_cache = OrderedDict()
+        self.expired_duration_ms = expired_duration_ms
+        self.prefetch_nums = prefetch_nums
+        self.empty_wait_time = empty_wait_time
+        self._sem = asyncio.Semaphore(1)
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
-        # This method is used by Scrapy to create your spiders.
         redis_url = crawler.settings.get("REDIS_URL")
-        s = cls(redis_url)
+        prefetch_nums = crawler.settings.get("PROXY_PREFETCH_NUMS", 64)
+        expired_duration = crawler.settings.get("PROXY_EXPRIED_TIME", 30) * 1000
+        empty_wait_time = crawler.settings.get("PROXY_EMPTY_WAIT_TIME", 3)
+        s = cls(redis_url, prefetch_nums, expired_duration, empty_wait_time)
         return s
 
-    async def process_request(self, request, spider):
-        # 从redis中获取一个代理
-        if request.meta.get("use_proxy", False) and not request.meta.get("proxy"):
-            proxy = await self.get_proxy()
-            request.meta["proxy"] = proxy
-
     async def get_proxy(self):
-        while True:
-            result = await self.redis_client.zpopmax("proxies_pool", 1)
-            if result:
-                proxy = result[0][0].decode("utf-8")
-                return proxy
-            else:
-                logger.warning("redis代理池为空,休息一秒")
-                await asyncio.sleep(1)
+        async with self._sem:
+            while True:
+                if self._proxies_cache:
+                    # 从代理缓存中取代理，如果代理过期则丢弃
+                    proxy_url, proxy_timestamp = self._proxies_cache.popitem(last=False)
+                    elapsed_time = int(time.time() * 1000) - proxy_timestamp
+                    if elapsed_time > self.expired_duration_ms:
+                        logger.debug(
+                            "代理过期 %(proxy_url)s: 来自%(elapsed_time)dms前",
+                            {"proxy_url": proxy_url, "elapsed_time": elapsed_time},
+                        )
+                        continue
+                    return proxy_url
+                else:
+                    # 代理缓存为空时，从redis中取代理,并加入缓存
+                    result = await self.redis_client.zpopmin("proxies_pool", self.prefetch_nums)
+                    if not result:
+                        logger.warning("代理池为空，等待%(wait_time)s秒", {"wait_time": self.empty_wait_time})
+                        await asyncio.sleep(self.empty_wait_time)
+                        continue
+                    logger.debug("从远程代理池拉取代理%(count)d个", {"count": len(result)})
+                    for proxy_url, proxy_timestamp in result:
+                        proxy_url = proxy_url.decode("utf-8")
+                        proxy_timestamp = int(proxy_timestamp)
+                        self._proxies_cache[proxy_url] = proxy_timestamp
+
+    async def process_request(self, request, spider):
+        if request.meta.get("use_proxy", False) and not request.meta.get("proxy"):
+            request.meta["proxy"] = await self.get_proxy()
 
     async def process_exception(self, request, exception, spider):
-        proxy = await self.get_proxy()
-        request.meta["proxy"] = proxy
-        request.dont_filter = True
-        logger.warning("代理异常，更换代理 " + request.url)
-        return request
-
-
-# class ProxyPoolDownloaderMiddleware:
-
-#     def __init__(self, redis_url) -> None:
-#         self.redis_client = redis.Redis.from_url(redis_url)
-#         self.proxies_buffer = asyncio.Queue()
-
-#     async def spider_opened(self, spider):
-#         spider.logger.info(f"爬虫打开，等待3秒运行: {spider.name}")
-#         self.proxies_getter_task = asyncio.create_task(self.add_proxy_to_queue())
-#         await asyncio.sleep(3)
-
-#     @classmethod
-#     def from_crawler(cls, crawler: Crawler):
-#         # This method is used by Scrapy to create your spiders.
-#         redis_url = crawler.settings.get("PROXY_POOL_REDIS_URL")
-#         s = cls(redis_url)
-#         crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
-#         return s
-
-#     async def add_proxy_to_queue(self):
-#         while True:
-#             if self.proxies_buffer.qsize() <= 10:
-#                 logger.debug("代理池小于10，正在补充")
-#                 datas = await self.redis_client.zpopmax("proxies_pool", 20)
-#                 if datas:
-#                     for data in datas:
-#                         proxy = data[0].decode("utf-8")
-#                         timestamp = int(data[1])
-#                         self.proxies_buffer.put_nowait((proxy, timestamp))
-#                 else:
-#                     logger.warning("redis代理池为空")
-#                     await asyncio.sleep(1)
-#             else:
-#                 # 代理池大于32，不需要补充，休息一阵子
-#                 await asyncio.sleep(0.2)
-
-#     async def get_valid_proxy(self, expire=20000):
-#         """获取一个代理，如果代理过期则重新获取"""
-#         proxy, timestamp = await self.proxies_buffer.get()
-#         if timestamp < int(time() * 1000) - expire:
-#             logger.debug("代理过期，重新获取")
-#             return await self.get_valid_proxy()
-#         return proxy
-
-#     async def process_request(self, request, spider):
-#         # 从redis中获取一个代理
-#         proxy = await self.get_valid_proxy()
-#         request.meta["proxy"] = proxy
-#         return None
-
-#     async def process_exception(self, request, exception, spider):
-#         proxy = await self.get_valid_proxy()
-#         request.meta["proxy"] = proxy
-#         return request
+        for ex in self.proxy_change_exception:
+            if isinstance(exception, ex) and request.meta.get("use_proxy", False):
+                request.meta["proxy"] = await self.get_proxy()
+                logger.debug(
+                    "请求异常，切换代理 %(request)s: \n%(exception)s",
+                    {"request": request, "exception": exception},
+                    extra={"spider": spider},
+                )
+                break
+        else:
+            request.meta["proxy"] = await self.get_proxy()
+            logger.warning(
+                "未捕获的异常，切换代理 %(request)s: \n%(exception)s",
+                {"request": request, "exception": exception},
+                extra={"spider": spider},
+            )
