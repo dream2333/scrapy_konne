@@ -70,7 +70,7 @@ class ProxyPoolDownloaderMiddleware:
             if isinstance(exception, ex) and request.meta.get("use_proxy", False):
                 request.meta["proxy"] = await self.get_proxy()
                 logger.debug(
-                    "请求异常，切换代理 %(request)s: \n%(exception)s",
+                    "请求异常，切换代理 %(request)s: %(exception)s",
                     {"request": request, "exception": exception},
                     extra={"spider": spider},
                 )
@@ -78,7 +78,7 @@ class ProxyPoolDownloaderMiddleware:
         else:
             request.meta["proxy"] = await self.get_proxy()
             logger.warning(
-                "未捕获的异常，切换代理 %(request)s: \n%(exception)s",
+                "未捕获的异常，切换代理 %(request)s: %(exception)s",
                 {"request": request, "exception": exception},
                 extra={"spider": spider},
             )
