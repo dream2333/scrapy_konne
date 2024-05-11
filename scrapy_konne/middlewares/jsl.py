@@ -5,11 +5,11 @@
 
 import re
 from scrapy.http import Response, Request
-from scrapy_konne.middlewares.proxy import ProxyPoolNoBufferDownloaderMiddleware
+from scrapy_konne.middlewares.proxy import ProxyPoolDownloaderMiddleware
 from scrapy.utils.log import logger
 
 
-class JslDownloaderMiddleware(ProxyPoolNoBufferDownloaderMiddleware):
+class JslDownloaderMiddleware(ProxyPoolDownloaderMiddleware):
     async def process_response(self, request: Request, response: Response, spider):
         if response.status == 521:
             # 更换cookies、代理、去重标签，重新请求
