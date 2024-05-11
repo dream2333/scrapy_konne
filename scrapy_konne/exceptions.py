@@ -1,6 +1,6 @@
 from scrapy.exceptions import DropItem
 
-class LoseItemField(Exception):
+class ItemFieldError(Exception):
     pass
 
 class SilentDropItem(DropItem):

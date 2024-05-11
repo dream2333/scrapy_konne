@@ -1,12 +1,15 @@
+import asyncio
 import csv
 import datetime
+import re
 from itemadapter import ItemAdapter
 from aiohttp import ClientSession
 from scrapy import Spider
 from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem
-from scrapy_konne.exceptions import LocalDuplicateItem, LoseItemField, RemoteDuplicateItem, ExpriedItem
+from scrapy_konne.exceptions import LocalDuplicateItem, ItemFieldError, RemoteDuplicateItem, ExpriedItem
 from w3lib.html import replace_entities
+from twisted.internet.defer import Deferred
 
 
 class TimeValidatorPipeline:
@@ -22,20 +25,30 @@ class TimeValidatorPipeline:
         item_adapter: DetailDataItem = ItemAdapter(item)
         publish_time = item_adapter["publish_time"]
         if not publish_time:
-            raise LoseItemField("publish_time发布时间字段缺失")
+            raise ItemFieldError("publish_time字段缺失")
         if isinstance(publish_time, int):
-            timestamp = publish_time
-            if timestamp > 10000000000:
-                timestamp //= 1000
-            publish_time = datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
-            item_adapter["publish_time"] = publish_time
-            spider.logger.debug(f"时间戳转换为时间字符串: {timestamp} ---> {publish_time}")
+            publish_time = item_adapter["publish_time"] = self.timestamp_to_str(publish_time)
+        elif isinstance(publish_time, str):
+            if not self.is_time_str_valid(publish_time):
+                raise ItemFieldError(f"publish_time字段格式错误: {publish_time}")
+        else:
+            raise ItemFieldError(f"publish_time字段{publish_time}类型错误: {type(publish_time)}")
         time_now = datetime.datetime.now()
         dis_time = time_now - datetime.timedelta(hours=self.expired_time)
         time_dis_str = dis_time.strftime("%Y-%m-%d %H:%M:%S")
         if publish_time < time_dis_str:
             raise ExpriedItem(f"发布时间超过3天，不需要上传: {item_adapter['source_url']}")
         return item
+
+    def timestamp_to_str(self, timestamp):
+        if timestamp > 10000000000:
+            timestamp //= 1000
+        publish_time = datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        return publish_time
+
+    def is_time_str_valid(self, time_str):
+        pattern = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?")
+        return bool(pattern.match(time_str))
 
 
 class BaseKonneHttpPipeline:
@@ -54,8 +67,10 @@ class BaseKonneHttpPipeline:
     def open_spider(self, spider: Spider):
         self.session = ClientSession()
 
-    async def close_spider(self, spider: Spider):
-        await self.session.close()
+    def close_spider(self, spider: Spider):
+        loop = asyncio.get_event_loop()
+        return Deferred.fromFuture(loop.create_task(self.session.close()))
+
 
 class LocalDuplicatePipeline:
     cache = set()
@@ -67,6 +82,7 @@ class LocalDuplicatePipeline:
             raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
         self.cache.add(url)
         return item
+
 
 class RemoteDuplicatePipeline(BaseKonneHttpPipeline):
     async def is_url_exist(self, url):
