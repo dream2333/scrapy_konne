@@ -1,4 +1,3 @@
-import asyncio
 import csv
 import datetime
 from itemadapter import ItemAdapter
@@ -6,34 +5,36 @@ from aiohttp import ClientSession
 from scrapy import Spider
 from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem
-from twisted.internet.defer import Deferred
 from scrapy_konne.exceptions import LocalDuplicateItem, LoseItemField, RemoteDuplicateItem, ExpriedItem
 from w3lib.html import replace_entities
 
 
-class TimeExpiredCheckPipeline:
+class TimeValidatorPipeline:
+    def __init__(self, expired_time) -> None:
+        self.expired_time = expired_time
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        expired_time = crawler.settings.getint("ITEM_FILTER_TIME", 72)
+        return cls(expired_time)
+
     def process_item(self, item, spider: Spider):
         item_adapter: DetailDataItem = ItemAdapter(item)
         publish_time = item_adapter["publish_time"]
         if not publish_time:
-            raise LoseItemField("发布时间字段缺失")
+            raise LoseItemField("publish_time发布时间字段缺失")
+        if isinstance(publish_time, int):
+            timestamp = publish_time
+            if timestamp > 10000000000:
+                timestamp //= 1000
+            publish_time = datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+            item_adapter["publish_time"] = publish_time
+            spider.logger.debug(f"时间戳转换为时间字符串: {timestamp} ---> {publish_time}")
         time_now = datetime.datetime.now()
-        dis_time = time_now - datetime.timedelta(days=3)
+        dis_time = time_now - datetime.timedelta(hours=self.expired_time)
         time_dis_str = dis_time.strftime("%Y-%m-%d %H:%M:%S")
         if publish_time < time_dis_str:
             raise ExpriedItem(f"发布时间超过3天，不需要上传: {item_adapter['source_url']}")
-        return item
-
-
-class LocalDuplicatePipeline:
-    cache = set()
-
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        url = item_adapter["source_url"]
-        if url in self.cache:
-            raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
-        self.cache.add(url)
         return item
 
 
@@ -53,10 +54,19 @@ class BaseKonneHttpPipeline:
     def open_spider(self, spider: Spider):
         self.session = ClientSession()
 
-    def close_spider(self, spider: Spider):
-        loop = asyncio.get_event_loop()
-        return Deferred.fromFuture(loop.create_task(self.session.close()))
+    async def close_spider(self, spider: Spider):
+        await self.session.close()
 
+class LocalDuplicatePipeline:
+    cache = set()
+
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        url = item_adapter["source_url"]
+        if url in self.cache:
+            raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
+        self.cache.add(url)
+        return item
 
 class RemoteDuplicatePipeline(BaseKonneHttpPipeline):
     async def is_url_exist(self, url):
@@ -137,4 +147,3 @@ class CSVWriterPipeline:
             ]
         )
         return item
-

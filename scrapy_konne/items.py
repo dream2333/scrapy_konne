@@ -8,7 +8,7 @@ class DetailDataItem:
 
     Attributes:
         title (str): 详情页标题。
-        publish_time (str): 发布时间。
+        publish_time (str 或 int): 发布时间，可以填入纯数字时间戳或日期字符串。
         content (str): 详情页内容。
         source (str): 内容来源。
         source_url (str): 详情页URL。
@@ -23,7 +23,7 @@ class DetailDataItem:
     """
 
     title: str = ""
-    publish_time: str = ""
+    publish_time: str | int = ""
     content: str = ""
     source: str = ""
     source_url: str = ""
@@ -33,7 +33,6 @@ class DetailDataItem:
     media_type: int = 8
     page_crawl_id: int = 0
     search_crawl_id: int = 0
-
 
 
 @dataclass

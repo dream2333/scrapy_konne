@@ -5,8 +5,11 @@ import time
 
 import redis.asyncio as redis
 from scrapy.crawler import Crawler
+from scrapy.exceptions import CloseSpider
 from scrapy.core.downloader.handlers.http11 import TunnelError
 from twisted.internet.error import TimeoutError
+from twisted.internet import reactor
+from scrapy import signals
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +17,8 @@ logger = logging.getLogger(__name__)
 class ProxyPoolDownloaderMiddleware:
 
     def __init__(self, redis_url, prefetch_nums, expired_duration_ms, empty_wait_time) -> None:
-        self.redis_client = redis.Redis.from_url(redis_url, protocol=3)
+        self.redis_url = redis_url
+        self.redis_client = None
         self.proxy_change_exception = [
             TunnelError,
             TimeoutError,
@@ -32,7 +36,21 @@ class ProxyPoolDownloaderMiddleware:
         expired_duration = crawler.settings.get("PROXY_EXPRIED_TIME", 30) * 1000
         empty_wait_time = crawler.settings.get("PROXY_EMPTY_WAIT_TIME", 3)
         s = cls(redis_url, prefetch_nums, expired_duration, empty_wait_time)
+        crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
         return s
+
+    async def spider_opened(self, spider):
+        try:
+            self.redis_client = redis.Redis.from_url(self.redis_url, socket_timeout=10, protocol=3)
+            is_connected = await self.redis_client.ping()
+            if is_connected:
+                logger.info("Redis连接成功")
+            else:
+                reactor.callLater(
+                    0, spider.crawler.engine.close_spider, spider, reason="ping Redis服务器失败"
+                )
+        except redis.ConnectionError:
+            reactor.callLater(0, spider.crawler.engine.close_spider, spider, reason="Redis服务器连接失败")
 
     async def get_proxy(self):
         async with self._sem:
@@ -52,7 +70,7 @@ class ProxyPoolDownloaderMiddleware:
                     # 代理缓存为空时，从redis中取代理,并加入缓存
                     result = await self.redis_client.zpopmin("proxies_pool", self.prefetch_nums)
                     if not result:
-                        logger.warning("代理池为空，等待%(wait_time)s秒", {"wait_time": self.empty_wait_time})
+                        logger.error("代理池为空，等待%(wait_time)s秒", {"wait_time": self.empty_wait_time})
                         await asyncio.sleep(self.empty_wait_time)
                         continue
                     logger.debug("从远程代理池拉取代理%(count)d个", {"count": len(result)})
