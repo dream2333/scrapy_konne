@@ -23,9 +23,9 @@ class TimeValidatorPipeline:
 
     def process_item(self, item, spider: Spider):
         item_adapter: DetailDataItem = ItemAdapter(item)
-        publish_time = item_adapter["publish_time"]
-        if not publish_time:
+        if "publish_time" not in item_adapter:
             raise ItemFieldError("publish_time字段缺失")
+        publish_time = item_adapter["publish_time"]
         if isinstance(publish_time, int):
             publish_time = item_adapter["publish_time"] = self.timestamp_to_str(publish_time)
         elif isinstance(publish_time, str):

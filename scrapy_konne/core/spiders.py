@@ -11,7 +11,6 @@ class DistrubuteSpiderMixin:
     def from_crawler(cls, crawler: Crawler, *args, **kwargs):
         spider = cls(*args, **kwargs)
         spider._set_crawler(crawler)
-        crawler
         print("from_crawler")
         return spider
 
@@ -37,6 +36,9 @@ class IncreaseSpider(Spider):
     cursor_name: str = "cursor"
     """数据库中游标的字段名，默认为cursor"""
 
+    __mongo_client = None
+    __collection = None
+
     def __init__(self, name: str | None = None, **kwargs: Any):
         super().__init__(name, **kwargs)
         self._previous_round_cursor = None
@@ -49,7 +51,9 @@ class IncreaseSpider(Spider):
             )
         elif len(self.offset) != 2:
             raise ValueError("offset必须是一个长度为2的列表、元组、或切片，代表向前探查数量和向后探查数量")
-        elif not getattr(self, "url_template", None) and self.start_requests == IncreaseSpider.start_requests:
+        elif not (
+            getattr(self, "url_template", None) or self.start_requests == IncreaseSpider.start_requests
+        ):
             raise ValueError("url_template和start_requests之中至少有一个需要被重载")
 
     def start_requests(self) -> Iterable[Request]:
@@ -60,8 +64,10 @@ class IncreaseSpider(Spider):
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
         spider = super(IncreaseSpider, cls).from_crawler(crawler, *args, **kwargs)
-        cls.mongo_client = pymongo.MongoClient(crawler.settings.get("MONGO_URI"))
-        cls.collection = spider.mongo_client["Scrapy"]["ids_state"]
+        if cls.__mongo_client is None:
+            mongo_url = crawler.settings.get("MONGO_URI")
+            cls.__mongo_client = pymongo.MongoClient(mongo_url, timeoutMS=10000)
+            cls.__collection = spider.__mongo_client["Scrapy"]["ids_state"]
         spider.settings["SPIDER_MIDDLEWARES"][IncreaseSpiderMiddleware] = 0
         return spider
 
@@ -74,7 +80,7 @@ class IncreaseSpider(Spider):
     @property
     def cursor(self) -> int:
         if self._cursor is None:
-            meta = self.collection.find_one({"site_id": self.site_id})
+            meta = self.__collection.find_one({"site_id": self.site_id})
             if meta is None:
                 raise CloseSpider("请先在数据库中初始化游标")
             self._cursor = meta[self.cursor_name]
@@ -91,7 +97,7 @@ class IncreaseSpider(Spider):
     def close(self):
         try:
             if self._has_greater_cursor:
-                self.collection.update_one(
+                self.__collection.update_one(
                     {"site_id": self.site_id}, {"$set": {self.cursor_name: self.cursor}}
                 )
                 self.logger.info(
@@ -100,4 +106,4 @@ class IncreaseSpider(Spider):
             else:
                 self.logger.info(f"本轮没有更新游标, 现在的游标是：{self.cursor}")
         finally:
-            self.mongo_client.close()
+            self.__mongo_client.close()
