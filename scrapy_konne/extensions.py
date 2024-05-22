@@ -9,7 +9,35 @@ from weakref import WeakKeyDictionary
 from scrapy.utils.log import logger
 from tabulate import tabulate
 from wcwidth import wcswidth
+# 在文件redis_extension.py中
+import redis
+from twisted.internet import reactor
 
+class RedisExtension:
+    def __init__(self, redis_url):
+        self.redis_url = redis_url
+        self.redis_client = None
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        redis_url = crawler.settings.get("REDIS_URL")
+        extension = cls(redis_url)
+        crawler.signals.connect(extension.spider_opened, signal=signals.spider_opened)
+        return extension
+
+    async def spider_opened(self, spider):
+        try:
+            self.redis_client = redis.Redis.from_url(self.redis_url, socket_timeout=10, protocol=3)
+            is_connected = await self.redis_client.ping()
+            if is_connected:
+                logger.info("Redis连接成功")
+            else:
+                reactor.callLater(
+                    0, spider.crawler.engine.close_spider, spider, reason="ping Redis服务器失败"
+                )
+        except redis.ConnectionError:
+            reactor.callLater(0, spider.crawler.engine.close_spider, spider, reason="Redis服务器连接失败")
+            
 
 class KonneHttpLogExtension:
     """用于向公司接口提交日志"""

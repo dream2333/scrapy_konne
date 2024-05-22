@@ -5,7 +5,6 @@ import time
 
 import redis.asyncio as redis
 from scrapy.crawler import Crawler
-from scrapy.exceptions import CloseSpider
 from scrapy.core.downloader.handlers.http11 import TunnelError
 from twisted.internet.error import TimeoutError
 from twisted.internet import reactor
@@ -21,7 +20,6 @@ class ProxyPoolDownloaderMiddleware:
         self.redis_client = None
         self.proxy_change_exception = [
             TunnelError,
-            TimeoutError,
         ]
         self._proxies_cache = OrderedDict()
         self.expired_duration_ms = expired_duration_ms
@@ -92,7 +90,7 @@ class ProxyPoolDownloaderMiddleware:
                     {"request": request, "exception": exception},
                     extra={"spider": spider},
                 )
-                break
+                return request
         else:
             request.meta["proxy"] = await self.get_proxy()
             logger.warning(

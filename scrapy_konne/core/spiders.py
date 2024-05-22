@@ -51,9 +51,7 @@ class IncreaseSpider(Spider):
             )
         elif len(self.offset) != 2:
             raise ValueError("offset必须是一个长度为2的列表、元组、或切片，代表向前探查数量和向后探查数量")
-        elif not (
-            getattr(self, "url_template", None) or self.start_requests == IncreaseSpider.start_requests
-        ):
+        elif getattr(self, "url_template",None) is None and self.start_requests == IncreaseSpider.start_requests:
             raise ValueError("url_template和start_requests之中至少有一个需要被重载")
 
     def start_requests(self) -> Iterable[Request]:
