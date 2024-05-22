@@ -1,6 +1,6 @@
 from typing import Any, Iterable
 import pymongo
-from scrapy_konne.items import DetailDataItem
+from scrapy_konne import DetailDataItem
 from scrapy import Request, Spider
 from scrapy.crawler import Crawler
 from scrapy.exceptions import CloseSpider
