@@ -63,7 +63,7 @@ class IncreaseSpider(Spider):
     def from_crawler(cls, crawler, *args, **kwargs):
         spider = super(IncreaseSpider, cls).from_crawler(crawler, *args, **kwargs)
         if cls.__mongo_client is None:
-            mongo_url = crawler.settings.get("MONGO_URI")
+            mongo_url = crawler.settings.get("MONGO_URL")
             cls.__mongo_client = pymongo.MongoClient(mongo_url, timeoutMS=10000)
             cls.__collection = spider.__mongo_client["Scrapy"]["ids_state"]
         spider.settings["SPIDER_MIDDLEWARES"][IncreaseSpiderMiddleware] = 0
