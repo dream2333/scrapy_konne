@@ -9,35 +9,7 @@ from weakref import WeakKeyDictionary
 from scrapy.utils.log import logger
 from tabulate import tabulate
 from wcwidth import wcswidth
-# 在文件redis_extension.py中
-import redis
-from twisted.internet import reactor
 
-class RedisExtension:
-    def __init__(self, redis_url):
-        self.redis_url = redis_url
-        self.redis_client = None
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        redis_url = crawler.settings.get("REDIS_URL")
-        extension = cls(redis_url)
-        crawler.signals.connect(extension.spider_opened, signal=signals.spider_opened)
-        return extension
-
-    async def spider_opened(self, spider):
-        try:
-            self.redis_client = redis.Redis.from_url(self.redis_url, socket_timeout=10, protocol=3)
-            is_connected = await self.redis_client.ping()
-            if is_connected:
-                logger.info("Redis连接成功")
-            else:
-                reactor.callLater(
-                    0, spider.crawler.engine.close_spider, spider, reason="ping Redis服务器失败"
-                )
-        except redis.ConnectionError:
-            reactor.callLater(0, spider.crawler.engine.close_spider, spider, reason="Redis服务器连接失败")
-            
 
 class KonneHttpLogExtension:
     """用于向公司接口提交日志"""
@@ -75,10 +47,10 @@ class KonneHttpLogExtension:
         # 定时任务，30秒提交一次日志
         self.log_task = self.loop.create_task(self.log_timer(spider))
 
-    async def spider_closed(self, spider):
+    async def spider_closed(self, spider, reason):
         # 取消定时任务
         self.log_task.cancel()
-        logger.info(f"爬虫{spider.name}已关闭")
+        logger.info(f"康奈日志记录器[{spider.name}]已关闭，爬虫状态:{reason}")
         await self.log_stats(spider)
         await self.session.close()
 
@@ -138,7 +110,7 @@ class KonneWechatBotExtension:
         crawler.signals.connect(extension.spider_closed, signal=signals.spider_closed)
         return extension
 
-    async def spider_closed(self, spider):
+    async def spider_closed(self, spider, reason):
         # 获取本地时区
         local_tz = ZoneInfo("Asia/Shanghai")
         # 将 UTC 时间转换为本地时间
@@ -182,6 +154,8 @@ class KonneWechatBotExtension:
 开始: <font color="comment">{start_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")}</font>
 
 结束: <font color="comment">{finish_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")}</font>
+
+结束原因,  <font color="comment">{reason}</font>
 
 
 {table}

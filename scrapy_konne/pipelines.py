@@ -110,14 +110,14 @@ class UploadDataPipeline(BaseKonneHttpPipeline):
         item_adapter: DetailDataItem = ItemAdapter(item)
         data = {
             "Title": item_adapter["title"],  # 标题
-            "Author": item_adapter["author"],  # 作者
-            "AuthorID": item_adapter["author_id"],  # 作者id
-            "Content": item_adapter["content"],
             "PublishTime": item_adapter["publish_time"],  # 文章的发布时间
-            "MediaType": item_adapter["media_type"],  # 固定值为8
+            "Author": item_adapter["author"],  # 作者
+            "SourceUrl": item_adapter["source_url"],  # 网址
             "VideoUrl": item_adapter["video_url"],
             "Source": item_adapter["source"],  # 来源
-            "SourceUrl": item_adapter["source_url"],  # 网址
+            "Content": item_adapter["content"],
+            "AuthorID": item_adapter["author_id"],  # 作者id
+            "MediaType": item_adapter["media_type"],  # 固定值为8
             "PageCrawlID": item_adapter["page_crawl_id"],  # 不同的项目不同
             "SearchCrawID": item_adapter["search_crawl_id"],  # 不同的项目不同
         }
