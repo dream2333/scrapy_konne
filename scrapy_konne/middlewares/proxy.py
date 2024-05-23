@@ -14,20 +14,17 @@ logger = logging.getLogger(__name__)
 
 class ProxyPoolDownloaderMiddleware:
 
-    def __init__(self, prefetch_nums, expired_duration_ms, empty_wait_time) -> None:
+    def __init__(self, crawler: Crawler) -> None:
         self.redis_client = None
         self._proxies_cache = OrderedDict()
-        self.expired_duration_ms = expired_duration_ms
-        self.prefetch_nums = prefetch_nums
-        self.empty_wait_time = empty_wait_time
+        self.expired_duration_ms = crawler.settings.getfloat("PROXY_EXPRIED_TIME", 30) * 1000
+        self.prefetch_nums = crawler.settings.getint("PROXY_PREFETCH_NUMS", 64)
+        self.empty_wait_time = crawler.settings.getfloat("PROXY_EMPTY_WAIT_TIME", 3)
         self._sem = asyncio.Semaphore(1)
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
-        prefetch_nums = crawler.settings.get("PROXY_PREFETCH_NUMS", 64)
-        expired_duration = crawler.settings.get("PROXY_EXPRIED_TIME", 30) * 1000
-        empty_wait_time = crawler.settings.get("PROXY_EMPTY_WAIT_TIME", 3)
-        object = cls(prefetch_nums, expired_duration, empty_wait_time)
+        object = cls(crawler)
         crawler.signals.connect(object.spider_opened, signal=signals.spider_opened)
         crawler.signals.connect(object.spider_closed, signal=signals.spider_closed)
         return object
@@ -38,7 +35,7 @@ class ProxyPoolDownloaderMiddleware:
         if not self.redis_client:
             reactor.callLater(0, spider.crawler.engine.close_spider, spider, reason="无法连接到Redis服务器")
 
-    def spider_closed(self, spider):
+    def spider_closed(self, spider, reason):
         if self.redis_client:
             self.redis_client.close()
 

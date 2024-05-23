@@ -13,9 +13,9 @@ class KonneWechatBotExtension:
 
     def __init__(self, crawler: Crawler):
         self.bot_url = crawler.settings.get("WECHAT_BOT_URL")
-        self.failure_threshold = crawler.settings.get("WECHAT_BOT_REQ_FAILURE_THRESHOLD", 0)
-        self.log_error_threshold = crawler.settings.get("WECHAT_BOT_LOG_ERROR_THRESHOLD", 0)
-        self.elapsed_time_threshold = crawler.settings.get("ELAPSED_TIME_THRESHOLD", float("inf"))
+        self.failure_threshold = crawler.settings.getint("WECHAT_BOT_REQ_FAILURE_THRESHOLD")
+        self.log_error_threshold = crawler.settings.getint("WECHAT_BOT_LOG_ERROR_THRESHOLD", 0)
+        self.elapsed_time_threshold = crawler.settings.getfloat("ELAPSED_TIME_THRESHOLD", inf)
         if self.elapsed_time_threshold <= 0 or self.elapsed_time_threshold is None:
             self.elapsed_time_threshold = inf
         self.admin_url = crawler.settings.get("ADMIN_PAGE_URL")
@@ -73,7 +73,7 @@ class KonneWechatBotExtension:
 
 结束: <font color="comment">{finish_time.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")}</font>
 
-结束原因,  <font color="comment">{reason}</font>
+结束原因:  <font color="comment">{reason}</font>
 
 
 {table}

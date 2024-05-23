@@ -44,7 +44,7 @@ class KonneHttpLogExtension:
         # 取消定时任务
         self.log_task.cancel()
         logger.info(f"康奈日志记录器[{spider.name}]已关闭，爬虫状态:{reason}")
-        if reason != "finished":
+        if reason == "finished":
             await self.log_stats()
         await self.session.close()
 
