@@ -1,60 +1,116 @@
 import asyncio
 import csv
-import datetime
+from datetime import datetime, timedelta
 import re
-from itemadapter import ItemAdapter
+import time
 from aiohttp import ClientSession
 from scrapy import Spider
 from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem
-from scrapy_konne.exceptions import LocalDuplicateItem, ItemFieldError, RemoteDuplicateItem, ExpriedItem
+from scrapy_konne.exceptions import (
+    ItemUploadError,
+    LocalDuplicateItem,
+    ItemFieldError,
+    RemoteDuplicateItem,
+    ExpriedItem,
+)
 from w3lib.html import replace_entities
 from twisted.internet.defer import Deferred
+import mmh3
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class TimeValidatorPipeline:
+class LogItemPipeline:
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        logger.info(item)
+        return item
+
+
+class ItemValidatorPipeline:
     def __init__(self, expired_time) -> None:
         self.expired_time = expired_time
+        self.time_pattern = re.compile(
+            r"(?P<full>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})|(?P<partial>\d{4}-\d{2}-\d{2} \d{2}:\d{2})"
+        )
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
         expired_time = crawler.settings.getint("ITEM_FILTER_TIME", 72)
         return cls(expired_time)
 
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        if "publish_time" not in item_adapter or not item_adapter["publish_time"]:
-            raise ItemFieldError("publish_time字段缺失")
-        publish_time = item_adapter["publish_time"]
-        if isinstance(publish_time, int):
-            publish_time = item_adapter["publish_time"] = self.timestamp_to_str(publish_time)
-        elif isinstance(publish_time, str):
-            if not self.is_time_str_valid(publish_time):
-                raise ItemFieldError(f"publish_time字段格式错误: {publish_time}")
-        else:
-            raise ItemFieldError(f"publish_time字段{publish_time}类型错误: {type(publish_time)}")
-        time_now = datetime.datetime.now()
-        dis_time = time_now - datetime.timedelta(hours=self.expired_time)
-        time_dis_str = dis_time.strftime("%Y-%m-%d %H:%M:%S")
-        if publish_time < time_dis_str:
-            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item_adapter['source_url']}")
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        self.has_none_field(item)
+        self.is_time_format_valid(item.publish_time)
+        item.publish_time = self.publish_time_to_datetime(item.publish_time)
+        dis_time = datetime.now() - timedelta(hours=self.expired_time)
+        if item.publish_time < dis_time:
+            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item['source_url']}")
         return item
 
-    def timestamp_to_str(self, timestamp):
+    def timestamp_to_datetime(self, timestamp):
+        # 如果是13位时间戳，那么转换成10位时间戳
         if timestamp > 10000000000:
-            timestamp //= 1000
-        publish_time = datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+            timestamp /= 1000
+        publish_time = datetime.fromtimestamp(timestamp)
         return publish_time
 
-    def is_time_str_valid(self, time_str):
-        pattern = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?")
-        return bool(pattern.match(time_str))
+    def str_to_datetime(self, time_str):
+        matches = self.time_pattern.match(time_str)
+        if matches:
+            full = matches.group("full")
+            if full:
+                # 尝试使用包含秒的格式来解析时间字符串
+                return datetime.strptime(full, "%Y-%m-%d %H:%M:%S")
+            else:
+                partial = matches.group("partial")
+                # 如果上面的格式失败，那么尝试使用不包含秒的格式
+                return datetime.strptime(partial, "%Y-%m-%d %H:%M")
+        else:
+            ItemFieldError(f"时间字符串格式错误：{repr(time_str)}")
+
+    def publish_time_to_datetime(self, publish_time: int | str | datetime):
+        if isinstance(publish_time, int):
+            return self.timestamp_to_datetime(publish_time)
+        elif isinstance(publish_time, str):
+            return self.str_to_datetime(publish_time)
+        return publish_time
+
+    def is_time_format_valid(self, publish_time: int | str | datetime):
+        if isinstance(publish_time, int):
+            # 必须是10位或13位时间戳
+            if publish_time < 0 or len(str(publish_time)) not in (10, 13):
+                raise ItemFieldError(f"unix时间戳错误：{publish_time}")
+        elif isinstance(publish_time, str):
+            if not self.time_pattern.match(publish_time):
+                raise ItemFieldError(f"时间字符串错误：{repr(publish_time)}")
+        elif not isinstance(publish_time, datetime):
+            raise ItemFieldError(
+                f"publish_time字段类型错误: {type(publish_time)},仅允许Datetime、10/13位Unix时间戳、日期字符串"
+            )
+
+    def has_none_field(self, item: DetailDataItem):
+        if item.source_url is None:
+            raise ItemFieldError("字段source_url不能为空")
+        if item.title is None:
+            raise ItemFieldError("字段title不能为空")
+        if item.content is None:
+            raise ItemFieldError("字段content不能为空")
+        if item.source is None:
+            raise ItemFieldError("字段source不能为空")
+        if item.publish_time is None:
+            raise ItemFieldError("字段publish_time不能为空")
+        return True
 
 
 class BaseKonneHttpPipeline:
     """
-    BaseKonneLogPipeline类用于处理康奈的http日志的基本设置。
+    基类，康奈的上传及去重接口的基本设置。
     """
+
+    uri_is_exist_url: str
+    upload_and_filter_url: str
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
@@ -72,19 +128,20 @@ class BaseKonneHttpPipeline:
         return Deferred.fromFuture(loop.create_task(self.session.close()))
 
 
-class LocalDuplicatePipeline:
-    cache = set()
+class MemoryItemDupefilterPipeline:
+    """在本地进行预去重，避免重复上传。"""
 
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        url = item_adapter["source_url"]
-        if url in self.cache:
+    url_seen = set()
+
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        url = item.source_url
+        if url in self.url_seen:
             raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
-        self.cache.add(url)
+        self.url_seen.add(url)
         return item
 
 
-class RemoteDuplicatePipeline(BaseKonneHttpPipeline):
+class HttpItemDupefilterPipeline(BaseKonneHttpPipeline):
     async def is_url_exist(self, url):
         filter_url = self.uri_is_exist_url
         params = {"url": url}
@@ -93,11 +150,10 @@ class RemoteDuplicatePipeline(BaseKonneHttpPipeline):
             if isinstance(result, int):
                 return bool(result)
 
-    async def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        url = item_adapter["source_url"]
+    async def process_item(self, item: DetailDataItem, spider: Spider):
+        url = item.source_url
         if await self.is_url_exist(url):
-            raise RemoteDuplicateItem(f"url已经在去重库存在，不需要上传: {url}")
+            raise RemoteDuplicateItem(f"url已经在http去重库存在，不需要上传: {url}")
         return item
 
 
@@ -106,49 +162,67 @@ class UploadDataPipeline(BaseKonneHttpPipeline):
     数据上传pipeline，用于上传数据到数据库。
     """
 
-    async def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
+    async def process_item(self, item: DetailDataItem, spider: Spider):
         data = {
-            "Title": item_adapter["title"],  # 标题
-            "PublishTime": item_adapter["publish_time"],  # 文章的发布时间
-            "Author": item_adapter["author"],  # 作者
-            "SourceUrl": item_adapter["source_url"],  # 网址
-            "VideoUrl": item_adapter["video_url"],
-            "Source": item_adapter["source"],  # 来源
-            "Content": item_adapter["content"],
-            "AuthorID": item_adapter["author_id"],  # 作者id
-            "MediaType": item_adapter["media_type"],  # 固定值为8
-            "PageCrawlID": item_adapter["page_crawl_id"],  # 不同的项目不同
-            "SearchCrawID": item_adapter["search_crawl_id"],  # 不同的项目不同
+            "Title": item.title,  # 标题
+            "PublishTime": item.publish_time.strftime("%Y-%m-%d %H:%M:%S"),  # 文章的发布时间
+            "Author": item.video_url,  # 作者
+            "SourceUrl": item.source_url,  # 网址
+            "VideoUrl": item.video_url,
+            "Source": item.source,  # 来源
+            "Content": item.content,
+            "AuthorID": item.author_id,  # 作者id
+            "MediaType": item.media_type,  # 固定值为8
+            "PageCrawlID": item.page_crawl_id,  # 不同的项目不同
+            "SearchCrawID": item.search_crawl_id,  # 不同的项目不同
         }
+        if not await self.upload(self, data):
+            raise ItemUploadError(f"item上传失败: {data}")
+        return item
+
+    async def upload(self, data):
         async with self.session.post(self.upload_and_filter_url, data=data) as response:
-            spider.logger.info(data)
+            result = await response.json()
+            if isinstance(result, int):
+                return bool(result)
+
+
+class UploadFilteredUrlPipeline:
+    """
+    提交上传成功的Url的数据，用于请求过滤。
+    """
+
+    def __init__(self, crawler: Crawler):
+        self._redis_client = None
+        self.crawler = crawler
+        self.redis_key = "dupefilter:" + crawler.spider.name
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        object = cls(crawler)
+        return object
+
+    @property
+    def redis_client(self):
+        if not self._redis_client:
+            self._redis_client = getattr(self.crawler, "redis_client", None)
+        return self._redis_client
+
+    async def process_item(self, item: DetailDataItem, spider: Spider):
+        url = item.source_url
+        hash_value = mmh3.hash128(url)
+        hash_mapping = {hash_value: int(time.time() * 1000)}
+        await self.redis_client.zadd(self.redis_key, hash_mapping, nx=True)
         return item
 
-class SourceUrlFilterUploadPipeline:
-    """
-    SourceUrlFilterUploadPipeline类用于过滤和上传数据。
-    """
 
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        if "source_url" not in item_adapter:
-            raise ItemFieldError("source_url字段缺失")
-        url = item_adapter["source_url"]
-        if url in spider.source_url_cache:
-            raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
-        spider.source_url_cache.add(url)
-        return item
-    
-    
 class ReplaceHtmlEntityPipeline:
     """
     ReplaceHtmlEntityPipeline类用于替换item中的html实体。
     """
 
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        item_adapter["content"] = replace_entities(item_adapter["content"])
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        item.content = replace_entities(item.content)
         return item
 
 
@@ -164,17 +238,16 @@ class CSVWriterPipeline:
     def close_spider(self, spider: Spider):
         self.file.close()
 
-    def process_item(self, item, spider: Spider):
-        item_adapter: DetailDataItem = ItemAdapter(item)
-        spider.logger.info(item_adapter)
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        item.publish_time = item.publish_time.strftime("%Y-%m-%d %H:%M:%S")
         self.writer.writerow(
             [
-                item_adapter["title"],
-                item_adapter["author"],
-                item_adapter["publish_time"],
-                item_adapter["content"],
-                item_adapter["source"],
-                item_adapter["source_url"],
+                item.title,
+                item.video_url,
+                item.publish_time,
+                item.content,
+                item.source,
+                item.source_url,
             ]
         )
         return item

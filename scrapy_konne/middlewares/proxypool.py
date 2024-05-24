@@ -24,13 +24,13 @@ class ProxyPoolDownloaderMiddleware:
     @classmethod
     def from_crawler(cls, crawler: Crawler):
         object = cls(crawler)
-        crawler.signals.connect(object.spider_opened, signal=signals.spider_opened)
         return object
 
-    async def spider_opened(self, spider):
-        client = getattr(spider.crawler, "redis_client", None)
-        if client:
-            self.redis_client = client
+    @property
+    def redis_client(self):
+        if not self._redis_client:
+            self._redis_client = getattr(self.crawler, "redis_client", None)
+        return self._redis_client
 
     async def process_request(self, request, spider):
         if request.meta.get("use_proxy", False) and not request.meta.get("proxy"):

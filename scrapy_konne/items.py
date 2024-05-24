@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dataclasses import field
 
 
 @dataclass
@@ -12,8 +13,6 @@ class DetailDataItem:
         content (str): 详情页内容。
         source (str): 内容来源。
         source_url (str): 详情页URL。
-        site_id (int): 网站ID。
-        client_id (str): 客户端ID。
         author (str, optional): 作者。默认为空字符串。
         author_id (str, optional): 作者ID。默认为空字符串。
         video_url (str, optional): 视频URL。默认为空字符串。
@@ -22,17 +21,17 @@ class DetailDataItem:
         search_crawl_id (int, optional): 搜索爬取ID。默认为0。
     """
 
-    title: str = ""
-    publish_time: str | int = ""
-    content: str = ""
-    source: str = ""
-    source_url: str = ""
-    author: str = ""
-    author_id: str = ""
-    video_url: str = ""
-    media_type: int = 8
-    page_crawl_id: int = 0
-    search_crawl_id: int = 0
+    title: str = field(default=None)
+    publish_time: str | int = field(default=None)
+    content: str = field(default=None)
+    source: str = field(default=None)
+    source_url: str = field(default=None, hash=True)
+    author: str = field(default="")
+    author_id: str = field(default="")
+    video_url: str = field(default="")
+    media_type: int = field(default=8)
+    page_crawl_id: int = field(default=0)
+    search_crawl_id: int = field(default=0)
 
 
 @dataclass
