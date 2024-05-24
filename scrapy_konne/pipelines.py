@@ -46,7 +46,7 @@ class ItemValidatorPipeline:
         item.publish_time = self.publish_time_to_datetime(item.publish_time)
         dis_time = datetime.now() - timedelta(hours=self.expired_time)
         if item.publish_time < dis_time:
-            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item['source_url']}")
+            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item}")
         return item
 
     def timestamp_to_datetime(self, timestamp):
