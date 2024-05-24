@@ -23,7 +23,7 @@ class TimeValidatorPipeline:
 
     def process_item(self, item, spider: Spider):
         item_adapter: DetailDataItem = ItemAdapter(item)
-        if "publish_time" not in item_adapter:
+        if "publish_time" not in item_adapter or not item_adapter["publish_time"]:
             raise ItemFieldError("publish_time字段缺失")
         publish_time = item_adapter["publish_time"]
         if isinstance(publish_time, int):
@@ -125,7 +125,22 @@ class UploadDataPipeline(BaseKonneHttpPipeline):
             spider.logger.info(data)
         return item
 
+class SourceUrlFilterUploadPipeline:
+    """
+    SourceUrlFilterUploadPipeline类用于过滤和上传数据。
+    """
 
+    def process_item(self, item, spider: Spider):
+        item_adapter: DetailDataItem = ItemAdapter(item)
+        if "source_url" not in item_adapter:
+            raise ItemFieldError("source_url字段缺失")
+        url = item_adapter["source_url"]
+        if url in spider.source_url_cache:
+            raise LocalDuplicateItem(f"url已经在本地存在，不需要上传: {url}")
+        spider.source_url_cache.add(url)
+        return item
+    
+    
 class ReplaceHtmlEntityPipeline:
     """
     ReplaceHtmlEntityPipeline类用于替换item中的html实体。
