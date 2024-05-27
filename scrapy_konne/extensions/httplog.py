@@ -65,8 +65,8 @@ class KonneHttpLogExtension:
     async def log_stats(self):
         """提交日志并输出"""
         log_data = self.spiders_stats
-        result = await self.send_log(log_data)
         formatted_stats = f'添加数：{log_data["AddCount"]} 请求数：{log_data["TotalCount"]}'
+        result = await self.send_log(log_data)
         if result:
             logger.info(f"[{log_data['ClientID']}] 日志提交成功: {formatted_stats}")
         else:
