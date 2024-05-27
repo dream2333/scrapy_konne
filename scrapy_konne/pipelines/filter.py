@@ -86,10 +86,6 @@ class TimeFilterPipeline:
 class KonneHttpFilterPipeline(BaseKonneHttpPipeline):
     """对konne库中已存在的url进行过滤"""
 
-    def __init__(self, crawler) -> None:
-        self.crawler = crawler
-        self.redis_key = "dupefilter:" + crawler.spider.name
-
     async def is_url_exist(self, url):
         filter_url = self.uri_is_exist_url
         params = {"url": url}
@@ -98,11 +94,10 @@ class KonneHttpFilterPipeline(BaseKonneHttpPipeline):
             if isinstance(result, int):
                 return bool(result)
 
-    @classmethod
-    def from_crawler(cls, crawler: Crawler):
-        obj = super().from_crawler(crawler)
-        obj.crawler = crawler
-        return obj
+    def open_spider(self, spider: Spider):
+        super().open_spider(spider)
+        self.crawler = spider.crawler
+        self.redis_key = "dupefilter:" + spider.name
 
     @property
     def redis_client(self):
