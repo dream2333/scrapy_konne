@@ -38,10 +38,11 @@ class KonneWechatBotExtension:
         finish_time = stats.get("finish_time")
         elapsed_time_seconds = int(stats.get("elapsed_time_seconds", 0))
         item_scraped_count = stats.get("item_scraped_count", 0)
+        redis_filtered_count = stats.get("dupefilter/redis", 0)
         error_log = stats.get("log_count/ERROR", 0)
         retry_max_reached = stats.get("retry/max_reached", 0)
         item_dropped_count = stats.get("item_dropped_count", 0)
-        total_scraped_count = item_dropped_count + item_scraped_count
+        total_scraped_count = item_dropped_count + item_scraped_count + redis_filtered_count
         if (
             total_scraped_count == 0
             or retry_max_reached > self.failure_threshold
@@ -51,6 +52,7 @@ class KonneWechatBotExtension:
         ):
             data = [
                 ["总耗时", elapsed_time_seconds, self.elapsed_time_threshold],
+                ["请求过滤", redis_filtered_count, "无"]
                 ["item提交", item_scraped_count, "无"],
                 ["item过滤", item_dropped_count, "无"],
                 ["item总计", total_scraped_count, 0],
