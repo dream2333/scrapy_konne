@@ -17,7 +17,7 @@ class ProxyPoolDownloaderMiddleware:
         self._proxies_cache = OrderedDict()
         self.expired_duration_ms = crawler.settings.getfloat("PROXY_EXPRIED_TIME", 30) * 1000
         self.prefetch_nums = crawler.settings.getint("PROXY_PREFETCH_NUMS", 64)
-        self.empty_wait_time = crawler.settings.getfloat("PROXY_EMPTY_WAIT_TIME", 3)
+        self.empty_wait_time = crawler.settings.getfloat("PROXY_EMPTY_WAIT_TIME", 5)
         self._sem = asyncio.Semaphore(1)
         self.crawler = crawler
 
@@ -49,20 +49,20 @@ class ProxyPoolDownloaderMiddleware:
 
     async def get_proxy(self):
         while True:
-            if self._proxies_cache:
-                # 从代理缓存中取代理，如果代理过期则丢弃
-                proxy_url, proxy_timestamp = self._proxies_cache.popitem(last=False)
-                elapsed_time = int(time.time() * 1000) - proxy_timestamp
-                if elapsed_time > self.expired_duration_ms:
-                    logger.debug(
-                        "代理过期 %(proxy_url)s: 来自%(elapsed_time)dms前",
-                        {"proxy_url": proxy_url, "elapsed_time": elapsed_time},
-                    )
-                    continue
-                return proxy_url
-            # 代理缓存为空时，从redis中取代理,并加入缓存
+            # 使用信号量控制拉取代理的协程数量，且不阻塞其他模块协程
             async with self._sem:
-                # 使用信号量控制拉取代理的协程数量，且不阻塞其他模块协程
+                if self._proxies_cache:
+                    # 从代理缓存中取代理，如果代理过期则丢弃
+                    proxy_url, proxy_timestamp = self._proxies_cache.popitem(last=False)
+                    elapsed_time = int(time.time() * 1000) - proxy_timestamp
+                    if elapsed_time > self.expired_duration_ms:
+                        logger.debug(
+                            "代理过期 %(proxy_url)s: 来自%(elapsed_time)dms前",
+                            {"proxy_url": proxy_url, "elapsed_time": elapsed_time},
+                        )
+                        continue
+                    return proxy_url
+                # 代理缓存为空时，从redis中取代理,并加入缓存
                 if not await self.fetch_proxies():
                     logger.error("代理池为空，等待%(wait_time)s秒", {"wait_time": self.empty_wait_time})
                     await asyncio.sleep(self.empty_wait_time)

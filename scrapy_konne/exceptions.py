@@ -15,7 +15,7 @@ class ExpriedItem(SilentDropItem):
     pass
 
 # 在本地去重时重复
-class LocalDuplicateItem(SilentDropItem):
+class MemorySetDuplicateItem(SilentDropItem):
     pass
 
 # 在康奈的http接口中重复 

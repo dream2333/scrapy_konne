@@ -1,4 +1,4 @@
-from scrapy import Request, signals
+from scrapy import Request
 from scrapy.crawler import Crawler
 import logging
 import mmh3
@@ -6,7 +6,7 @@ import mmh3
 logger = logging.getLogger(__name__)
 
 
-class SourceUrlDupefilterMiddleware:
+class UrlRedisDupefilterMiddleware:
 
     def __init__(self, crawler: Crawler):
         self._redis_client = None
