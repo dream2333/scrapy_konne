@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class ProxyPoolDownloaderMiddleware:
 
     def __init__(self, crawler: Crawler) -> None:
-        self.redis_client = None
+        self._redis_client = None
         self._proxies_cache = OrderedDict()
         self.expired_duration_ms = crawler.settings.getfloat("PROXY_EXPRIED_TIME", 30) * 1000
         self.prefetch_nums = crawler.settings.getint("PROXY_PREFETCH_NUMS", 64)
