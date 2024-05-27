@@ -52,7 +52,7 @@ class KonneWechatBotExtension:
         ):
             data = [
                 ["总耗时", elapsed_time_seconds, self.elapsed_time_threshold],
-                ["请求过滤", redis_filtered_count, "无"]
+                ["请求过滤", redis_filtered_count, "无"],
                 ["item提交", item_scraped_count, "无"],
                 ["item过滤", item_dropped_count, "无"],
                 ["item总计", total_scraped_count, 0],

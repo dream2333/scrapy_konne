@@ -79,7 +79,7 @@ class TimeFilterPipeline:
             hash_value = mmh3.hash128(url)
             hash_mapping = {hash_value: int(time.time() * 1000)}
             await self.redis_client.zadd(self.redis_key, hash_mapping, nx=True)
-            raise ExpriedItem(f"发布时间超过3天，不需要上传: {item}")
+            raise ExpriedItem(f"发布时间超过{self.expired_time}，不需要上传: {item}")
         return item
 
 

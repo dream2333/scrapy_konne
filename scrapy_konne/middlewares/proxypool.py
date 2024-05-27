@@ -5,7 +5,6 @@ import time
 
 from scrapy.crawler import Crawler
 from scrapy.core.downloader.handlers.http11 import TunnelError
-from scrapy import signals
 
 logger = logging.getLogger(__name__)
 
