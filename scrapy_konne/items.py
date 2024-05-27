@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import datetime
 
 
 @dataclass
@@ -22,7 +23,7 @@ class DetailDataItem:
     """
 
     title: str = field(default=None)
-    publish_time: str | int = field(default=None)
+    publish_time: str | int | datetime = field(default=None)
     content: str = field(default=None)
     source: str = field(default=None)
     source_url: str = field(default=None, hash=True)

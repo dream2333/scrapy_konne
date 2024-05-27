@@ -4,6 +4,8 @@ from datetime import datetime
 from scrapy import Spider
 from scrapy_konne.items import DetailDataItem
 from scrapy_konne.exceptions import ItemFieldError
+from dataclasses import fields
+from typing import get_type_hints
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ class FieldValidatorPipeline:
     def process_item(self, item: DetailDataItem, spider: Spider):
         self.has_none_field(item)
         self.is_time_format_valid(item.publish_time)
+        self.type_check(item)
         return item
 
     def is_time_format_valid(self, publish_time: int | str | datetime):
@@ -44,3 +47,10 @@ class FieldValidatorPipeline:
         if not item.publish_time:
             raise ItemFieldError("字段publish_time不能为空")
         return True
+
+    def type_check(self, item: DetailDataItem):
+        for field in fields(item):
+            value = getattr(item, field.name)
+            expected_type = get_type_hints(item.__class__)[field.name]
+            if not isinstance(value, expected_type):
+                raise ItemFieldError(f"字段{field.name}类型错误：{type(value)}，必须为{expected_type}")
