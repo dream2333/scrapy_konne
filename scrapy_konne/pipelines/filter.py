@@ -19,7 +19,6 @@ class RedisFilteredUrlUploaderPipeline:
     """
 
     def __init__(self, crawler: Crawler):
-        self._redis_client = None
         self.crawler = crawler
         self.redis_key = "dupefilter:" + crawler.spider.name
 
@@ -30,7 +29,7 @@ class RedisFilteredUrlUploaderPipeline:
 
     @property
     def redis_client(self):
-        if not self._redis_client:
+        if not getattr(self, "_redis_client", None):
             self._redis_client = getattr(self.crawler, "redis_client", None)
         return self._redis_client
 
@@ -62,7 +61,6 @@ class TimeFilterPipeline:
         self.expired_time = crawler.settings.getint("ITEM_FILTER_TIME", 72)
         self.crawler = crawler
         self.redis_key = "dupefilter:" + crawler.spider.name
-        self._redis_client = None
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
@@ -70,7 +68,7 @@ class TimeFilterPipeline:
 
     @property
     def redis_client(self):
-        if not self._redis_client:
+        if not getattr(self, "_redis_client", None):
             self._redis_client = getattr(self.crawler, "redis_client", None)
         return self._redis_client
 
@@ -88,6 +86,10 @@ class TimeFilterPipeline:
 class KonneHttpFilterPipeline(BaseKonneHttpPipeline):
     """对konne库中已存在的url进行过滤"""
 
+    def __init__(self, crawler) -> None:
+        self.crawler = crawler
+        self.redis_key = "dupefilter:" + crawler.spider.name
+
     async def is_url_exist(self, url):
         filter_url = self.uri_is_exist_url
         params = {"url": url}
@@ -96,8 +98,21 @@ class KonneHttpFilterPipeline(BaseKonneHttpPipeline):
             if isinstance(result, int):
                 return bool(result)
 
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        return cls(crawler)
+
+    @property
+    def redis_client(self):
+        if not getattr(self, "_redis_client", None):
+            self._redis_client = getattr(self.crawler, "redis_client", None)
+        return self._redis_client
+
     async def process_item(self, item: DetailDataItem, spider: Spider):
         url = item.source_url
         if await self.is_url_exist(url):
+            hash_value = mmh3.hash128(url)
+            hash_mapping = {hash_value: int(time.time() * 1000)}
+            await self.redis_client.zadd(self.redis_key, hash_mapping, nx=True)
             raise RemoteDuplicateItem(f"url已经在http去重库存在，不需要上传: {url}")
         return item

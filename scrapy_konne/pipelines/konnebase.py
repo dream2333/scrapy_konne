@@ -2,8 +2,6 @@ import asyncio
 from aiohttp import ClientSession
 from scrapy import Spider
 from scrapy.crawler import Crawler
-from scrapy_konne.items import DetailDataItem
-from scrapy_konne.exceptions import ItemUploadError, RemoteDuplicateItem
 from twisted.internet.defer import Deferred
 import logging
 
