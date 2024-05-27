@@ -62,6 +62,7 @@ class TimeFilterPipeline:
         self.expired_time = crawler.settings.getint("ITEM_FILTER_TIME", 72)
         self.crawler = crawler
         self.redis_key = "dupefilter:" + crawler.spider.name
+        self._redis_client = None
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
