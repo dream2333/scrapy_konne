@@ -100,7 +100,9 @@ class KonneHttpFilterPipeline(BaseKonneHttpPipeline):
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
-        return cls(crawler)
+        obj = super().from_crawler(crawler)
+        obj.crawler = crawler
+        return obj
 
     @property
     def redis_client(self):

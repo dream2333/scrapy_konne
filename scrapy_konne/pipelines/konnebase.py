@@ -20,10 +20,9 @@ class BaseKonneHttpPipeline:
     def from_crawler(cls, crawler: Crawler):
         settings = crawler.settings
         upload_ip = settings.get("UPLOAD_DATA_IP")
-        obj = cls()
-        obj.uri_is_exist_url = f"http://{upload_ip}/QuChong/ExistUrl"
-        obj.upload_and_filter_url = f"http://{upload_ip}/Data/AddDataAndQuChong"
-        return obj
+        cls.uri_is_exist_url = f"http://{upload_ip}/QuChong/ExistUrl"
+        cls.upload_and_filter_url = f"http://{upload_ip}/Data/AddDataAndQuChong"
+        return cls()
 
     def open_spider(self, spider: Spider):
         self.session = ClientSession()
