@@ -54,7 +54,7 @@ class UrlRedisDupefilterMiddleware:
         if request.dont_filter is False:
             cursor = request.meta.get("cursor")
             if cursor:
-                if self.get_redis_client().zscore(self.redis_key, str(cursor)):
+                if self.get_redis_client().zscore(self.redis_key, cursor):
                     return True
                 return False
             url = request.meta.get("filter_url")
@@ -68,7 +68,7 @@ class UrlRedisDupefilterMiddleware:
         if request.dont_filter is False:
             cursor = request.meta.get("cursor")
             if cursor:
-                if self.get_redis_client(sync=True).zscore(self.redis_key, str(cursor)):
+                if self.get_redis_client(sync=True).zscore(self.redis_key, cursor):
                     return True
                 return False
             url = request.meta.get("filter_url")
