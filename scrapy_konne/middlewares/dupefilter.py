@@ -27,8 +27,8 @@ class UrlRedisDupefilterMiddleware:
             return self._async_redis_client
         else:
             if not getattr(self, "_sync_redis_client", None):
-                self.sync_redis_client = getattr(self.crawler, "sync_redis_client", None)
-            return self.sync_redis_client
+                self._sync_redis_client = getattr(self.crawler, "sync_redis_client", None)
+            return self._sync_redis_client
 
     def process_start_requests(self, start_requests, spider):
         """处理start_requests,只能用同步redis连接"""
@@ -38,7 +38,7 @@ class UrlRedisDupefilterMiddleware:
                 logger.debug(f"URL 已存在 <{request.meta['filter_url']}>")
                 continue
             yield request
-        self.sync_redis_client.close()
+        self.get_redis_client(True).close()
         logger.info("关闭同步redis连接")
 
     async def process_spider_output(self, response, result, spider):
