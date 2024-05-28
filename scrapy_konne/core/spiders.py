@@ -50,7 +50,7 @@ class IncreaseSpider(Spider):
     def start_requests(self) -> Iterable[Request]:
         for i in self.start_ids:
             url = self.url_template.format(cursor=i)
-            yield Request(url, dont_filter=True, meta={"cursor": i})
+            yield Request(url, meta={"cursor": i})
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
