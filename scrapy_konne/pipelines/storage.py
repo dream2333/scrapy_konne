@@ -6,14 +6,18 @@ from scrapy_konne.exceptions import ItemUploadError
 from scrapy_konne.items import DetailDataItem
 from scrapy_konne.pipelines.konnebase import BaseKonneHttpPipeline
 
-logger = logging.getLogger(__name__)
 
 class PrintItemPipeline:
     """
     仅输出item到日志。
     """
+
+    def __init__(self) -> None:
+        self.logger = logging.getLogger("管道末端")
+
     def process_item(self, item: DetailDataItem, spider: Spider):
-        logger.info(item)
+        message = f"{item.publish_time} | {item.title} | {item.source} | {item.source_url} : {item.author} {item.content} {item.video_url} media_type: {item.media_type} page_crawl_id:{item.page_crawl_id} page_crawl_id:{item.search_crawl_id}"
+        self.logger.info(message)
         return item
 
 

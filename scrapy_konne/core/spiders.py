@@ -2,17 +2,7 @@ from typing import Any, Iterable
 import pymongo
 from scrapy_konne import DetailDataItem
 from scrapy import Request, Spider
-from scrapy.crawler import Crawler
 from scrapy.exceptions import CloseSpider
-
-
-class DistrubuteSpiderMixin:
-    @classmethod
-    def from_crawler(cls, crawler: Crawler, *args, **kwargs):
-        spider = cls(*args, **kwargs)
-        spider._set_crawler(crawler)
-        print("from_crawler")
-        return spider
 
 
 class IncreaseSpiderMiddleware:
@@ -81,10 +71,11 @@ class IncreaseSpider(Spider):
     @property
     def cursor(self) -> int:
         if self._cursor is None:
-            meta = self.__collection.find_one({"site_id": self.site_id})
-            if meta is None:
+            # 初始化时从数据库中获取游标
+            db_meta = self.__collection.find_one({"site_id": self.site_id})
+            if db_meta is None:
                 raise CloseSpider("请先在数据库中初始化游标")
-            self._cursor = meta[self.cursor_name]
+            self._cursor = db_meta[self.cursor_name]
             self._previous_round_cursor = self._cursor
             self.logger.info(f"数据库id游标: {self._cursor}，前后偏移范围：{self.offset}")
         return self._cursor  # getter方法
