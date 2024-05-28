@@ -1,6 +1,6 @@
 from typing import Any, Iterable
 import pymongo
-from scrapy_konne import DetailDataItem
+from scrapy_konne import IncreamentItem
 from scrapy import Request, Spider
 from scrapy.exceptions import CloseSpider
 
@@ -8,8 +8,8 @@ from scrapy.exceptions import CloseSpider
 class IncreaseSpiderMiddleware:
     async def process_spider_output(self, response, result, spider):
         async for i in result:
-            if isinstance(i, DetailDataItem):
-                spider.cursor = response.meta["cursor"]
+            if isinstance(i, IncreamentItem):
+                spider.cursor = i.increment_id
             yield i
 
 

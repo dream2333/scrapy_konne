@@ -51,17 +51,29 @@ class UrlRedisDupefilterMiddleware:
             yield r
 
     async def is_dup_request(self, request):
-        url = request.meta.get("filter_url")
-        if url and request.dont_filter is False:
-            hash_value = mmh3.hash128(url)
-            if await self.get_redis_client().zscore(self.redis_key, hash_value):
-                return True
+        if request.dont_filter is False:
+            cursor = request.meta.get("cursor")
+            if cursor:
+                if self.get_redis_client().zscore(self.redis_key, str(cursor)):
+                    return True
+                return False
+            url = request.meta.get("filter_url")
+            if url:
+                hash_value = mmh3.hash128(request.meta["filter_url"])
+                if self.get_redis_client().zscore(self.redis_key, hash_value):
+                    return True
         return False
 
     def is_dup_request_sync(self, request):
-        url = request.meta.get("filter_url")
-        if url and request.dont_filter is False:
-            hash_value = mmh3.hash128(url)
-            if self.get_redis_client(True).zscore(self.redis_key, hash_value):
-                return True
+        if request.dont_filter is False:
+            cursor = request.meta.get("cursor")
+            if cursor:
+                if self.get_redis_client(sync=True).zscore(self.redis_key, str(cursor)):
+                    return True
+                return False
+            url = request.meta.get("filter_url")
+            if url:
+                hash_value = mmh3.hash128(request.meta["filter_url"])
+                if self.get_redis_client(sync=True).zscore(self.redis_key, hash_value):
+                    return True
         return False

@@ -36,6 +36,15 @@ class DetailDataItem:
 
 
 @dataclass
+class IncreamentItem(DetailDataItem):
+    """
+    用于表示一个自增详情页，继承自DetailDataItem。
+    """
+
+    increment_id: int = field(default=None)
+
+
+@dataclass
 class HeartbeatLogItem:
     """
     心跳日志项类，用于表示一个心跳日志。
