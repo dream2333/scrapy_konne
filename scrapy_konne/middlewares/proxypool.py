@@ -4,7 +4,8 @@ import logging
 import time
 
 from scrapy.crawler import Crawler
-from scrapy.core.downloader.handlers.http11 import TunnelError
+from scrapy.core.downloader.handlers.http11 import TunnelError, TimeoutError
+
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 class ProxyPoolDownloaderMiddleware:
 
     def __init__(self, crawler: Crawler) -> None:
+        self.catch_exceptions = [TunnelError]
         self._proxies_cache = OrderedDict()
         self.expired_duration_ms = crawler.settings.getfloat("PROXY_EXPRIED_TIME", 30) * 1000
         self.prefetch_nums = crawler.settings.getint("PROXY_PREFETCH_NUMS", 64)
@@ -42,8 +44,9 @@ class ProxyPoolDownloaderMiddleware:
                 extra={"spider": spider},
             )
             request.meta["proxy"] = await self.get_proxy()
-            if isinstance(exception, TunnelError):
-                return request
+            for Exce in self.catch_exceptions:
+                if isinstance(exception, Exce):
+                    return request
 
     async def get_proxy(self):
         while True:

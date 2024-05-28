@@ -6,8 +6,8 @@ from scrapy.exceptions import CloseSpider
 
 
 class IncreaseSpiderMiddleware:
-    def process_spider_output(self, response, result, spider):
-        for i in result:
+    async def process_spider_output(self, response, result, spider):
+        async for i in result:
             if isinstance(i, DetailDataItem):
                 spider.cursor = response.meta["cursor"]
             yield i
@@ -55,10 +55,10 @@ class IncreaseSpider(Spider):
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
         spider = super(IncreaseSpider, cls).from_crawler(crawler, *args, **kwargs)
-        if cls.__mongo_client is None:
+        if spider.__mongo_client is None:
             mongo_url = crawler.settings.get("MONGO_URL")
-            cls.__mongo_client = pymongo.MongoClient(mongo_url, timeoutMS=10000)
-            cls.__collection = spider.__mongo_client["Scrapy"]["ids_state"]
+            spider.__mongo_client = pymongo.MongoClient(mongo_url, timeoutMS=10000)
+            spider.__collection = spider.__mongo_client["Scrapy"]["ids_state"]
         spider.settings["SPIDER_MIDDLEWARES"][IncreaseSpiderMiddleware] = 0
         return spider
 

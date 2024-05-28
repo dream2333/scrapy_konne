@@ -57,7 +57,7 @@ class SetFilterPipeline:
 class TimeFilterPipeline:
     """超过时效的数据预过滤，并加入redis去重库"""
 
-    def __init__(self, crawler) -> None:
+    def __init__(self, crawler:Crawler) -> None:
         self.expired_time = crawler.settings.getint("ITEM_FILTER_TIME", 72)
         self.crawler = crawler
         self.redis_key = "dupefilter:" + crawler.spider.name

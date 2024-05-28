@@ -1,5 +1,6 @@
 from logging import getLogger
 from redis.asyncio import Redis, RedisError
+from redis import Redis as SyncRedis
 from scrapy.crawler import Crawler
 from scrapy import signals
 from scrapy.exceptions import NotConfigured
@@ -15,7 +16,7 @@ class RedisExtensionError(Exception):
 class GlobalRedisExtension:
     def __init__(self, redis_url):
         self.redis_url = redis_url
-        self.redis_client = None
+        self.client = None
         self._lock = Lock()
 
     @classmethod
@@ -32,9 +33,10 @@ class GlobalRedisExtension:
         """创建redis连接"""
         logger.info("开始连接redis...")
         try:
-            redis_client = Redis.from_url(redis_url, socket_timeout=10, protocol=3)
-            if await self.is_connection_alive(redis_client):
-                return redis_client
+            async_redis_client = Redis.from_url(redis_url, socket_timeout=10, protocol=3)
+            sync_redis_client = SyncRedis.from_url(redis_url, socket_timeout=10, protocol=3)
+            if await self.is_connection_alive(async_redis_client):
+                return async_redis_client, sync_redis_client
         except RedisError as e:
             raise RedisExtensionError(f"Redis连接错误: {e}")
         except (ValueError, TypeError):
@@ -50,13 +52,16 @@ class GlobalRedisExtension:
     async def spider_opened(self, spider):
         async with self._lock:
             try:
-                self.redis_client = await self.create_connection(self.redis_url)
-                spider.crawler.redis_client = self.redis_client
+                self.client, self.sync_client = await self.create_connection(self.redis_url)
+                spider.crawler.redis_client = self.client
+                spider.crawler.sync_redis_client = self.sync_client
                 logger.info("挂载redis全局连接成功")
             except Exception as e:
                 logger.error("%(error)s", {"error": e})
                 spider.crawler.engine.close_spider(spider, "redis_error")
 
     async def spider_closed(self, spider):
-        if self.redis_client:
-            await self.redis_client.close()
+        if self.client:
+            await self.client.close()
+        if self.sync_client:
+            self.sync_client.close()
