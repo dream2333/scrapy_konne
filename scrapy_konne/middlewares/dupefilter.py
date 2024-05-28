@@ -54,13 +54,13 @@ class UrlRedisDupefilterMiddleware:
         if request.dont_filter is False:
             cursor = request.meta.get("cursor")
             if cursor:
-                if self.get_redis_client().zscore(self.redis_key, cursor):
+                if await self.get_redis_client().zscore(self.redis_key, cursor):
                     return cursor
                 return None
             url = request.meta.get("filter_url")
             if url:
                 hash_value = mmh3.hash128(request.meta["filter_url"])
-                if self.get_redis_client().zscore(self.redis_key, hash_value):
+                if await self.get_redis_client().zscore(self.redis_key, hash_value):
                     return url
         return None
 
