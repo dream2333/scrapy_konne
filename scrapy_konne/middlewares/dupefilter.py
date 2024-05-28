@@ -33,9 +33,9 @@ class UrlRedisDupefilterMiddleware:
     def process_start_requests(self, start_requests, spider):
         """处理start_requests,只能用同步redis连接"""
         for request in start_requests:
-            if self.is_dup_request_sync(request):
+            if key := self.is_dup_request_sync(request):
                 self.crawler.stats.inc_value("dupefilter/redis", spider=spider)
-                logger.debug(f"URL 已存在 <{request.meta['filter_url']}>")
+                logger.debug(f"去重key已存在 <{key}>")
                 continue
             yield request
         self.get_redis_client(True).close()
@@ -44,9 +44,9 @@ class UrlRedisDupefilterMiddleware:
     async def process_spider_output(self, response, result, spider):
         async for r in result:
             if isinstance(r, Request):
-                if await self.is_dup_request(r):
+                if key := await self.is_dup_request(r):
                     self.crawler.stats.inc_value("dupefilter/redis", spider=spider)
-                    logger.debug(f"URL 已存在 <{r.meta['filter_url']}>")
+                    logger.debug(f"去重key已存在 <{key}>")
                     continue
             yield r
 
@@ -55,25 +55,25 @@ class UrlRedisDupefilterMiddleware:
             cursor = request.meta.get("cursor")
             if cursor:
                 if self.get_redis_client().zscore(self.redis_key, cursor):
-                    return True
-                return False
+                    return cursor
+                return None
             url = request.meta.get("filter_url")
             if url:
                 hash_value = mmh3.hash128(request.meta["filter_url"])
                 if self.get_redis_client().zscore(self.redis_key, hash_value):
-                    return True
-        return False
+                    return url
+        return None
 
     def is_dup_request_sync(self, request):
         if request.dont_filter is False:
             cursor = request.meta.get("cursor")
             if cursor:
                 if self.get_redis_client(sync=True).zscore(self.redis_key, cursor):
-                    return True
-                return False
+                    return cursor
+                return None
             url = request.meta.get("filter_url")
             if url:
                 hash_value = mmh3.hash128(request.meta["filter_url"])
                 if self.get_redis_client(sync=True).zscore(self.redis_key, hash_value):
-                    return True
-        return False
+                    return cursor
+        return None
