@@ -33,11 +33,11 @@ class ProxyPoolDownloaderMiddleware:
         return self._redis_client
 
     async def process_request(self, request, spider):
-        if request.meta.get("use_proxy", False) and not request.meta.get("proxy"):
+        if request.meta.get("rotate_proxy", False) and not request.meta.get("proxy"):
             request.meta["proxy"] = await self.get_proxy()
 
     async def process_exception(self, request, exception, spider):
-        if request.meta.get("use_proxy"):
+        if request.meta.get("rotate_proxy"):
             logger.debug(
                 "请求异常，切换代理 %(request)s: %(exception)s",
                 {"request": request, "exception": exception},
