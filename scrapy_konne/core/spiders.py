@@ -1,7 +1,8 @@
 from typing import Any, Iterable
 import pymongo
-from scrapy_konne import IncreamentItem
-from scrapy import Request, Spider
+from scrapy_konne.http import KRequest
+from scrapy_konne.items import IncreamentItem
+from scrapy import Spider
 from scrapy.exceptions import CloseSpider
 
 
@@ -47,10 +48,10 @@ class IncreaseSpider(Spider):
         ):
             raise ValueError("url_template和start_requests之中至少有一个需要被重载")
 
-    def start_requests(self) -> Iterable[Request]:
+    def start_requests(self):
         for i in self.start_ids:
             url = self.url_template.format(cursor=i)
-            yield Request(url, meta={"cursor": i})
+            yield KRequest(url, cursor=i)
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):

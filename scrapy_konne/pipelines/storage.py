@@ -16,7 +16,7 @@ class PrintItemPipeline:
         self.logger = logging.getLogger("管道末端")
 
     def process_item(self, item: DetailDataItem, spider: Spider):
-        message = f"{item.publish_time} | [{item.title}] | {item.source} | {item.source_url} | : {item.author} | {repr(item.content)} | {item.video_url} media_type: {item.media_type} page_crawl_id:{item.page_crawl_id} page_crawl_id:{item.search_crawl_id}"
+        message = f"{item.publish_time} | [{item.title}] | {item.source} | {item.source_url} | 作者: {item.author} | {repr(item.content)} | {item.video_url} media_type: {item.media_type} page_crawl_id:{item.page_crawl_id} page_crawl_id:{item.search_crawl_id}"
         self.logger.info(message)
         return item
 
