@@ -18,10 +18,14 @@ class TimeFormatorPipeline:
     def process_item(self, item: DetailDataItem, spider: Spider):
         if isinstance(item.publish_time, int):
             item.publish_time = self.timestamp_to_datetime(item.publish_time)
+            return item
         elif isinstance(item.publish_time, str):
             item.publish_time = self.str_to_datetime(item.publish_time)
-        return item
-
+            return item
+        elif isinstance(item.publish_time, datetime):
+            return item
+        raise ItemFieldError("publish_time字段类型错误")
+    
     def timestamp_to_datetime(self, timestamp):
         # 如果是13位时间戳，那么转换成10位时间戳
         if timestamp > 10000000000:
@@ -41,7 +45,7 @@ class TimeFormatorPipeline:
                 # 如果上面的格式失败，那么尝试使用不包含秒的格式
                 return datetime.strptime(partial, "%Y-%m-%d %H:%M")
         else:
-            ItemFieldError(f"时间字符串格式错误：{repr(time_str)}")
+            raise ItemFieldError(f"时间字符串格式错误：{repr(time_str)}")
 
 
 class ReplaceHtmlEntityPipeline:
