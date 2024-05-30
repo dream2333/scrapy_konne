@@ -54,7 +54,12 @@ class FengHuangShanXiaIncreament(Spider):
                 source=f"凤凰资讯APP-{section_name}",
             )
             # 将item也携带到下一级页面，这样在解析详情页时可以直接使用item
-            yield KRequest(article["url"], cb_kwargs={"item": item}, callback=self.parse_detail)
+            yield KRequest(
+                article["url"],
+                filter_url=item.source_url,
+                cb_kwargs={"item": item},
+                callback=self.parse_detail,
+            )
 
     # 解析详情页，补全仅剩的字段
     def parse_detail(self, response: HtmlResponse, item: DetailDataItem):
