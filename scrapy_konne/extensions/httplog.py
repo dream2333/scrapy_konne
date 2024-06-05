@@ -80,7 +80,6 @@ class KonneHttpLogExtension:
         extension = cls(interval, log_uploader)
         crawler.signals.connect(log_uploader.item_scraped, signal=signals.item_passed)
         crawler.signals.connect(log_uploader.request_scheduled, signal=signals.request_scheduled)
-        crawler.signals.connect(log_uploader.close, signal=signals.spider_closed)
         crawler.signals.connect(extension.spider_opened, signal=signals.spider_opened)
         crawler.signals.connect(extension.spider_closed, signal=signals.spider_closed)
         return extension
@@ -116,7 +115,8 @@ class KonneHttpLogExtension:
             logger.info(f"康奈日志记录器[{spider.name}]已提交，爬虫状态:{reason}")
         else:
             logger.error(f"爬虫关闭原因为:{reason}, 不提交康奈日志")
-
+        await self.log_uploader.close()
+        
     async def log_timer(self, spider):
         """打点计时器，每隔interval秒提交一次日志"""
         while True:

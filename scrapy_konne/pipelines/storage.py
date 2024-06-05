@@ -67,6 +67,8 @@ class KonneUploadorPipeline(BaseKonneHttpPipeline):
             "PageCrawlID": item.page_crawl_id,  # 不同的项目不同
             "SearchCrawID": item.search_crawl_id,  # 不同的项目不同
         }
+        if item.ip_area:
+            data["IPArea"] = item.ip_area
         if not await self.upload(data):
             raise ItemUploadError(f"item上传失败: {data}")
         return item

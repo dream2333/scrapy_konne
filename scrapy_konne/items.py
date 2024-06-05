@@ -20,6 +20,7 @@ class DetailDataItem:
         media_type (int, optional): 媒体类型。默认为8。
         page_crawl_id (int, optional): 页面爬取ID。默认为0。
         search_crawl_id (int, optional): 搜索爬取ID。默认为0。
+        ip_area (str, optional): IP所在地。默认为None。
     """
 
     title: str = field(default=None)
@@ -33,6 +34,7 @@ class DetailDataItem:
     media_type: int = field(default=8)
     page_crawl_id: int = field(default=0)
     search_crawl_id: int = field(default=0)
+    ip_area: str = field(default=None)
 
 
 @dataclass
