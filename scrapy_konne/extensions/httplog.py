@@ -127,7 +127,7 @@ class KonneHttpLogExtension:
         """提交日志并输出"""
         log_data = self.log_uploader.stats
         formatted_stats = f'item数：{log_data["AddCount"]} 请求数：{log_data["TotalCount"]}'
-        result = await self.log_uploader.send_log(log_data)
+        result = await self.log_uploader.send_log()
         if result:
             self.log_uploader.reset_stats()
             logger.info(f"[{log_data['ClientID']}] 日志提交成功: {formatted_stats}")
