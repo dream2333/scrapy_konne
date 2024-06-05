@@ -34,8 +34,8 @@ class DetailDataItem:
     media_type: int = field(default=8)
     page_crawl_id: int = field(default=0)
     search_crawl_id: int = field(default=0)
-    ip_area: str = field(default=None)
-    video_image: str = field(default=None)
+    ip_area: str = field(default="")
+    video_image: str = field(default="")
 
 
 @dataclass
