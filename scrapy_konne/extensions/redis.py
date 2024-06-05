@@ -63,5 +63,7 @@ class GlobalRedisExtension:
     async def spider_closed(self, spider):
         if self.client:
             await self.client.close()
+            logger.info("关闭异步redis连接")
         if self.sync_client:
             self.sync_client.close()
+            logger.info("关闭同步redis连接")

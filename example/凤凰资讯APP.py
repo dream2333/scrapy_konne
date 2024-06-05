@@ -4,12 +4,16 @@ from scrapy.http import HtmlResponse, Request
 from scrapy_konne import DetailDataItem, KRequest
 from scrapy import Spider
 
+from scrapy_konne.constants import LOG_TYPE
+
 
 # 含有三级页面的板块爬虫示例，不需要关心日志、去重、上传等逻辑，只需要关心数据解析和请求的发起
 class FengHuangShanXiaIncreament(Spider):
     name = "凤凰资讯APP"
     site_id = 36
     client_id = "fenghuangzixun_app_section_1"
+    # 可不填，默认为LOG_TYPE.SECTION
+    log_type = LOG_TYPE.SECTION
     # 如果添加start_urls，那么scrapy会默认以get方法请求start_urls中的url，并调用parse回调方法
     # start_urls = ["https://i.ifeng.com/", "https://ient.ifeng.com/"]
 
