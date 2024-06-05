@@ -76,7 +76,7 @@ class KonneHttpLogExtension:
     def from_crawler(cls, crawler: Crawler):
         # 添加信号
         interval = crawler.settings.getfloat("UPLOAD_LOG_INTERVAL")
-        log_uploader: SectionLogUploader = cls.get_log_uploader()
+        log_uploader: SectionLogUploader = cls.get_log_uploader(crawler)
         extension = cls(interval, log_uploader)
         crawler.signals.connect(log_uploader.item_scraped, signal=signals.item_passed)
         crawler.signals.connect(log_uploader.request_scheduled, signal=signals.request_scheduled)
