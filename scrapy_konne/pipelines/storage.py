@@ -34,12 +34,11 @@ class CSVWriterPipeline:
         self.file.close()
 
     def process_item(self, item: DetailDataItem, spider: Spider):
-        item.publish_time = item.publish_time.strftime("%Y-%m-%d %H:%M:%S")
         self.writer.writerow(
             [
                 item.title,
                 item.video_url,
-                item.publish_time,
+                item.publish_time.strftime("%Y-%m-%d %H:%M:%S"),
                 item.content,
                 item.source,
                 item.source_url,
