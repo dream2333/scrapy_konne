@@ -82,7 +82,7 @@ class SectionLogUploader(LogUploader):
         connect_signal = spider.crawler.signals.connect
         connect_signal(self.item_scraped, signal=signals.item_passed)
         connect_signal(self.request_scheduled, signal=signals.request_scheduled)
-        self.looping_task = asyncio.create_task(self.log_stats())
+        self.looping_task = asyncio.get_event_loop().create_task(self.log_stats())
         self.logger_type = LOG_TYPE.SECTION
         self.log_success_count = 0
         logger.info("开启板块日志拓展")
