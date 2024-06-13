@@ -1,6 +1,8 @@
 import traceback
-from typing import Any, Iterable
+from typing import Any, Iterable, Union, cast
 from pymongo import MongoClient
+from twisted.internet.defer import Deferred
+
 from scrapy_konne.http import KRequest
 from scrapy_konne.items import IncreamentItem
 from scrapy import Spider
@@ -50,8 +52,8 @@ class IncreaseSpider(Spider):
         if not isinstance(self.offset, Iterable) or len(self.offset) != 2:
             raise ValueError("offset必须是一个长度为2的列表、元组、或切片，代表向前探查数量和向后探查数量")
         if (
-            getattr(self, "url_template", None) is None
-            and self.start_requests == IncreaseSpider.start_requests
+                getattr(self, "url_template", None) is None
+                and self.start_requests == IncreaseSpider.start_requests
         ):
             raise ValueError("url_template和start_requests之中至少有一个需要被重载")
         if self._is_production:
@@ -64,6 +66,7 @@ class IncreaseSpider(Spider):
                 self.logger.warn("测试环境下，mock_cursor默认为0，建议设置一个非0的mock_cursor")
 
     def start_requests(self):
+        self.logger.info("未重写start_requests方法,使用默认url_template生成自增链接进行请求")
         for i in self.start_ids:
             url = self.url_template.format(cursor=i)
             yield KRequest(url, cursor=i)
@@ -126,20 +129,29 @@ class IncreaseSpider(Spider):
             f"当前为测试环境，使用mock_cursor模拟初始游标: {self.mock_cursor}，前后偏移范围：{self.offset}"
         )
 
-    def close(self):
-        if not self._is_production:
-            self.logger.info(f"测试环境，不更新游标: {self.cursor}")
-            return
+    def update_mongo_cursor(self):
         try:
             if self._has_greater_cursor:
                 self.mongo_cursor = self.cursor
                 self.logger.info(
-                    f"更新游标到: {self.cursor}, 与上轮差值 +{self.cursor-self._previous_round_cursor}"
+                    f"更新游标到: {self.cursor}, 与上轮差值 +{self.cursor - self._previous_round_cursor}"
                 )
             else:
                 self.logger.info(f"本轮没有更新游标, 现在的游标是：{self.cursor}")
         except Exception as e:
             self.logger.error(f"更新mongo游标失败: {e}")
             traceback.print_exc()
-        finally:
-            self.__mongo_client.close()
+
+    def update_course(self):
+        if not self._is_production:
+            self.logger.info(f"测试环境，不更新游标: {self.cursor}")
+        else:
+            self.update_mongo_cursor()
+        self.__mongo_client.close()
+
+    @staticmethod
+    def close(spider: "IncreaseSpider", reason: str) -> Union[Deferred, None]:
+        closed = getattr(spider, "closed", None)
+        if callable(closed):
+            return cast(Union[Deferred, None], closed(reason))
+        spider.update_course()
