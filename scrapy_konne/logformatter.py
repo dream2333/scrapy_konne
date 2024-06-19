@@ -10,3 +10,4 @@ class PoliteLogFormatter(LogFormatter):
         if isinstance(exception, SilentDropItem):
             log_format["level"] = logging.DEBUG  # default is warning but I want to change it to debug
         return log_format
+

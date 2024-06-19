@@ -1,19 +1,17 @@
 import logging
-import re
 from datetime import datetime
 from scrapy import Spider
+
 from scrapy_konne.items import DetailDataItem
 from scrapy_konne.exceptions import ItemFieldError
 from w3lib.html import replace_entities
+from dateutil.parser import parse as time_parse
+from scrapy_konne.utils.tools import format_time
 
 logger = logging.getLogger(__name__)
 
 
 class TimeFormatorPipeline:
-    def __init__(self) -> None:
-        self.time_pattern = re.compile(
-            r"(?P<full>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})|(?P<partial>\d{4}-\d{2}-\d{2} \d{2}:\d{2})"
-        )
 
     def process_item(self, item: DetailDataItem, spider: Spider):
         if isinstance(item.publish_time, int):
@@ -25,27 +23,35 @@ class TimeFormatorPipeline:
         elif isinstance(item.publish_time, datetime):
             return item
         raise ItemFieldError("publish_time字段类型错误")
-    
-    def timestamp_to_datetime(self, timestamp):
+
+    def timestamp_to_datetime(self, timestamp: int):
         # 如果是13位时间戳，那么转换成10位时间戳
         if timestamp > 10000000000:
             timestamp /= 1000
         publish_time = datetime.fromtimestamp(timestamp)
         return publish_time
 
-    def str_to_datetime(self, time_str):
-        matches = self.time_pattern.match(time_str)
-        if matches:
-            full = matches.group("full")
-            if full:
-                # 尝试使用包含秒的格式来解析时间字符串
-                return datetime.strptime(full, "%Y-%m-%d %H:%M:%S")
-            else:
-                partial = matches.group("partial")
-                # 如果上面的格式失败，那么尝试使用不包含秒的格式
-                return datetime.strptime(partial, "%Y-%m-%d %H:%M")
-        else:
-            raise ItemFieldError(f"时间字符串格式错误：{repr(time_str)}")
+    def str_to_datetime(self,time_str: str) -> datetime:
+        """
+        尝试将给定的时间字符串转换为datetime对象。
+        首先尝试使用dateutil.parser.parse进行解析，
+        如果失败，则尝试使用自定义的format_time函数进行解析。
+        如果两种方法都失败，则抛出ItemFieldError异常。
+
+        :param time_str: 需要转换的时间字符串
+        :return: 转换后的datetime对象
+        """
+        try:
+            # 使用dateutil.parser.parse来解析大部分ISO 8601格式和标准的时间字符串
+            date_time = time_parse(time_str).astimezone()
+        except ValueError:
+            try:
+                # 尝试使用自定义的format_time函数进行解析
+                date_time_str = format_time(time_str)
+                date_time = datetime.strptime(date_time_str, "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                raise ItemFieldError(f"时间字符串无法被智能转换：{repr(time_str)}")
+        return date_time
 
 
 class ReplaceHtmlEntityPipeline:
