@@ -147,7 +147,7 @@ class IncreaseSpider(Spider):
             self.logger.info(f"测试环境，不更新游标: {self.cursor}")
         else:
             self.update_mongo_cursor()
-        self.__mongo_client.close()
+            self.__mongo_client.close()
 
     @staticmethod
     def close(spider: "IncreaseSpider", reason: str) -> Union[Deferred, None]:
