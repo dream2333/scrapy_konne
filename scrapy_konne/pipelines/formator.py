@@ -43,7 +43,7 @@ class TimeFormatorPipeline:
         """
         try:
             # 使用dateutil.parser.parse来解析大部分ISO 8601格式和标准的时间字符串
-            date_time = time_parse(time_str).astimezone()
+            date_time = time_parse(time_str)
         except ValueError:
             try:
                 # 尝试使用自定义的format_time函数进行解析
