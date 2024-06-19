@@ -15,14 +15,18 @@ class TimeFormatorPipeline:
 
     def process_item(self, item: DetailDataItem, spider: Spider):
         if isinstance(item.publish_time, int):
-            item.publish_time = self.timestamp_to_datetime(item.publish_time)
+            publish_time = self.timestamp_to_datetime(item.publish_time)
+            item.publish_time = publish_time.astimezone()
             return item
         elif isinstance(item.publish_time, str):
-            item.publish_time = self.str_to_datetime(item.publish_time)
+            publish_time = self.str_to_datetime(item.publish_time)
+            item.publish_time = publish_time.astimezone()
             return item
         elif isinstance(item.publish_time, datetime):
+            item.publish_time = item.publish_time.astimezone()
             return item
-        raise ItemFieldError("publish_time字段类型错误")
+        else:
+            raise ItemFieldError("publish_time字段类型错误")
 
     def timestamp_to_datetime(self, timestamp: int):
         # 如果是13位时间戳，那么转换成10位时间戳
@@ -31,7 +35,7 @@ class TimeFormatorPipeline:
         publish_time = datetime.fromtimestamp(timestamp)
         return publish_time
 
-    def str_to_datetime(self,time_str: str) -> datetime:
+    def str_to_datetime(self, time_str: str) -> datetime:
         """
         尝试将给定的时间字符串转换为datetime对象。
         首先尝试使用dateutil.parser.parse进行解析，

@@ -80,7 +80,7 @@ class TimeFilterPipeline:
         return self._redis_client
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
-        dis_time = datetime.now() - timedelta(hours=self.expired_time)
+        dis_time = datetime.now().astimezone() - timedelta(hours=self.expired_time)
         if item.publish_time < dis_time:
             await add_fp_to_redis(self.redis_key, self.redis_client, item)
             raise ExpriedItem(f"发布时间超过{self.expired_time}，不需要上传: {item}")
