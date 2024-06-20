@@ -8,6 +8,7 @@ from scrapy_konne.items import DetailDataItem
 from scrapy_konne.pipelines.konnebase import BaseKonneRemotePipeline
 import orjson
 
+
 class PrintItemPipeline:
     """
     仅输出item到日志。
@@ -80,9 +81,11 @@ class KonneUploaderPipeline(BaseKonneRemotePipeline):
             result = await response.json()
             if isinstance(result, int):
                 return bool(result)
-
+            
+KonneUploadorPipeline=KonneUploaderPipeline
 
 # class KonneExtraTerritoryUploaderPipeline:
+
 #     @classmethod
 #     def from_crawler(cls, crawler):
 #         settings = crawler.settings
@@ -116,8 +119,7 @@ class KonneUploaderPipeline(BaseKonneRemotePipeline):
 #             "columnId": 0,  # 采集栏目ID
 #             # "language": data["LanguageID"],
 #         }
-#         aio_pika.Message(body=orjson.loads(info)),
-        
+#         return aio_pika.Message(body=orjson.loads(info))
 
 #     async def process_item(self, item: DetailDataItem, spider: Spider):
 
