@@ -83,7 +83,6 @@ class KonneUploaderPipeline(BaseKonneRemotePipeline):
                 return bool(result)
 
 
-KonneUploadorPipeline = KonneUploaderPipeline
 
 
 class KonneExtraTerritoryUploaderPipeline:
@@ -91,22 +90,18 @@ class KonneExtraTerritoryUploaderPipeline:
     @classmethod
     def from_crawler(cls, crawler):
         settings = crawler.settings
-        cls.extraterritorial_upload_url = settings.get("EXTRATERRITORIAL_RABBITMQ_URL")
+        cls.upload_url = settings.get("EXTRATERRITORIAL_RABBITMQ_URL")
+        cls.exchange_name = settings.get("EXTRATERRITORIAL_EXCHANGE_NAME")
+        cls.routing_key = settings.get("EXTRATERRITORIAL_ROUTING_KEY")
 
     async def open_spider(self, spider):
         self.site_id = spider.site_id
-        self.pika_connection = await aio_pika.connect_robust(url=self.extraterritorial_upload_url)
-        exchange_name = "abroad.data.exchange"
-        routing_key = "abroad.data.exchange"
+        self.pika_connection = await aio_pika.connect_robust(url=self.upload_url)
         self.channel = await self.pika_connection.channel()
-        self.exchange = await self.channel.get_exchange(exchange_name)
-
+        self.exchange = await self.channel.get_exchange(self.exchange_name)
 
     async def upload(self, data):
-        await self.exchange.publish(
-            aio_pika.Message(body=data.encode()),
-            routing_key="extraterritorial",
-        )
+        return await self.exchange.publish(data, routing_key=self.routing_key)
 
     def make_data(self, item):
         info = {

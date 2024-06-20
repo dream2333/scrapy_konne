@@ -5,9 +5,10 @@ from scrapy_konne.pipelines.filter import (
     KonneHttpFilterPipeline,
 )
 from scrapy_konne.pipelines.formator import TimeFormatorPipeline, ReplaceHtmlEntityPipeline
-from scrapy_konne.pipelines.storage import CSVWriterPipeline, KonneUploadorPipeline, PrintItemPipeline
+from scrapy_konne.pipelines.storage import CSVWriterPipeline, KonneUploaderPipeline, PrintItemPipeline
 from scrapy_konne.pipelines.validator import FieldValidatorPipeline
 
+KonneUploadorPipeline = KonneUploaderPipeline
 __all__ = [
     "RedisFilteredUrlUploaderPipeline",
     "SetFilterPipeline",
@@ -16,6 +17,7 @@ __all__ = [
     "TimeFormatorPipeline",
     "ReplaceHtmlEntityPipeline",
     "CSVWriterPipeline",
+    "KonneUploaderPipeline",
     "KonneUploadorPipeline",
     "PrintItemPipeline",
     "FieldValidatorPipeline",
