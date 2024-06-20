@@ -4,7 +4,7 @@ from scrapy import Spider
 from scrapy.crawler import Crawler
 from twisted.internet.defer import Deferred
 import logging
-import aio_pika
+
 
 logger = logging.getLogger(__name__)
 
