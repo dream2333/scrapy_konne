@@ -30,7 +30,7 @@ class IncreaseSpider(Spider):
     """url模板，格式化时传入cursor，eg:"https://example.com?tid={cursor}"""
     cursor_name: str = "cursor"
     """数据库中游标的字段名，默认为cursor"""
-
+    
     __mongo_client = None
     __collection = None
 

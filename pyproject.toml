@@ -18,6 +18,8 @@ wcwidth = "^0.2.13"
 mmh3 = "^4.1.0"
 python-dateutil = "^2.9.0.post0"
 lxml-html-clean = "^0.1.1"
+aio-pika = "^9.4.1"
+orjson = "^3.10.5"
 
 
 [build-system]
