@@ -7,7 +7,7 @@ from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem, IncreamentItem
 from scrapy_konne.exceptions import MemorySetDuplicateItem, RemoteDuplicateItem
 from scrapy_konne.exceptions import ExpriedItem
-from scrapy_konne.pipelines.konnebase import BaseKonneHttpPipeline
+from scrapy_konne.pipelines.konnebase import BaseKonneRemotePipeline
 
 
 logger = logging.getLogger(__name__)
@@ -80,6 +80,7 @@ class TimeFilterPipeline:
         return self._redis_client
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
+        # 时区转换
         dis_time = datetime.now().astimezone() - timedelta(hours=self.expired_time)
         if item.publish_time < dis_time:
             await add_fp_to_redis(self.redis_key, self.redis_client, item)
@@ -87,7 +88,7 @@ class TimeFilterPipeline:
         return item
 
 
-class KonneHttpFilterPipeline(BaseKonneHttpPipeline):
+class KonneHttpFilterPipeline(BaseKonneRemotePipeline):
     """对konne库中已存在的url进行过滤, 并加入redis缓存"""
 
     async def is_url_exist(self, url):

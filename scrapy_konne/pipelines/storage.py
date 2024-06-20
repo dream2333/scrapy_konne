@@ -1,11 +1,12 @@
 import csv
 import logging
 
+import aio_pika
 from scrapy import Spider
 from scrapy_konne.exceptions import ItemUploadError
 from scrapy_konne.items import DetailDataItem
-from scrapy_konne.pipelines.konnebase import BaseKonneHttpPipeline
-
+from scrapy_konne.pipelines.konnebase import BaseKonneRemotePipeline
+import orjson
 
 class PrintItemPipeline:
     """
@@ -47,16 +48,16 @@ class CSVWriterPipeline:
         return item
 
 
-class KonneUploadorPipeline(BaseKonneHttpPipeline):
+class KonneUploaderPipeline(BaseKonneRemotePipeline):
     """
-    数据上传pipeline，用于上传数据到数据库。
+    数据上传pipeline，用于上传板块和自增数据到数据库。
     """
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
         data = {
             "Title": item.title,  # 标题
             "PublishTime": item.publish_time.strftime("%Y-%m-%d %H:%M:%S"),  # 文章的发布时间
-            "Author": item.video_url,  # 作者
+            "Author": item.author,  # 作者
             "SourceUrl": item.source_url,  # 网址
             "VideoUrl": item.video_url,
             "Source": item.source,  # 来源
@@ -79,3 +80,47 @@ class KonneUploadorPipeline(BaseKonneHttpPipeline):
             result = await response.json()
             if isinstance(result, int):
                 return bool(result)
+
+
+# class KonneExtraTerritoryUploaderPipeline:
+#     @classmethod
+#     def from_crawler(cls, crawler):
+#         settings = crawler.settings
+#         cls.extraterritorial_upload_url = settings.get("EXTRATERRITORIAL_RABBITMQ_URL")
+
+#     async def open_spider(self, spider):
+#         self.site_id = spider.site_id
+#         self.pika_connection = await aio_pika.connect_robust(url=self.extraterritorial_upload_url)
+#         self.routing_key = "test_queue"
+#         self.channel = await self.pika_connection.channel()
+
+#     async def upload(self, data):
+#         async with self.pika_client:
+#             channel = await self.pika_client.channel()
+#             await channel.default_exchange.publish(
+#                 aio_pika.Message(body=data.encode()),
+#                 routing_key="extraterritorial",
+#             )
+
+#     def make_data(self, item):
+#         info = {
+#             "accountId": self.site_id,
+#             "title": item.title,
+#             "content": item.content,
+#             "author": item.author,
+#             "publishTime": item.publish_time,
+#             "source": item.source,
+#             "sourceSite": "",  # 来源网站
+#             "sourceUrl": item.source_url,
+#             "mediaType": 1,  # 媒体类型
+#             "columnId": 0,  # 采集栏目ID
+#             # "language": data["LanguageID"],
+#         }
+#         aio_pika.Message(body=orjson.loads(info)),
+        
+
+#     async def process_item(self, item: DetailDataItem, spider: Spider):
+
+#         if not await self.upload(data):
+#             raise ItemUploadError(f"item上传失败: {data}")
+#         return item

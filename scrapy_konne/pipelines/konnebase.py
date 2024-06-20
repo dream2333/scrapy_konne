@@ -4,11 +4,12 @@ from scrapy import Spider
 from scrapy.crawler import Crawler
 from twisted.internet.defer import Deferred
 import logging
+import aio_pika
 
 logger = logging.getLogger(__name__)
 
 
-class BaseKonneHttpPipeline:
+class BaseKonneRemotePipeline:
     """
     基类，康奈的上传及去重接口的基本设置。
     """
@@ -24,9 +25,12 @@ class BaseKonneHttpPipeline:
         cls.upload_and_filter_url = f"http://{upload_ip}/Data/AddDataAndQuChong"
         return cls()
 
-    def open_spider(self, spider: Spider):
+    async def open_spider(self, spider: Spider):
         self.session = ClientSession()
+
+    async def clean(self):
+        await self.session.close()
 
     def close_spider(self, spider: Spider):
         loop = asyncio.get_event_loop()
-        return Deferred.fromFuture(loop.create_task(self.session.close()))
+        return Deferred.fromFuture(loop.create_task(self.clean()))
