@@ -25,7 +25,7 @@ class BaseKonneRemotePipeline:
         cls.upload_and_filter_url = f"http://{upload_ip}/Data/AddDataAndQuChong"
         return cls()
 
-    async def open_spider(self, spider: Spider):
+    def open_spider(self, spider: Spider):
         self.session = ClientSession()
 
     async def clean(self):
