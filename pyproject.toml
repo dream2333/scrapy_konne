@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scrapy-konne"
-version = "0.3.0"
+version = "0.3.1"
 description = ""
 authors = ["dream2333 <vincentqng@gmail.com>"]
 readme = "README.md"
