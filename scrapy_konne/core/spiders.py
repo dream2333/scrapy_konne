@@ -30,7 +30,7 @@ class IncreaseSpider(Spider):
     """url模板，格式化时传入cursor，eg:"https://example.com?tid={cursor}"""
     cursor_name: str = "cursor"
     """数据库中游标的字段名，默认为cursor"""
-    
+
     __mongo_client = None
     __collection = None
 
@@ -52,8 +52,8 @@ class IncreaseSpider(Spider):
         if not isinstance(self.offset, Iterable) or len(self.offset) != 2:
             raise ValueError("offset必须是一个长度为2的列表、元组、或切片，代表向前探查数量和向后探查数量")
         if (
-                getattr(self, "url_template", None) is None
-                and self.start_requests == IncreaseSpider.start_requests
+            getattr(self, "url_template", None) is None
+            and self.start_requests == IncreaseSpider.start_requests
         ):
             raise ValueError("url_template和start_requests之中至少有一个需要被重载")
         if self._is_production:
