@@ -44,7 +44,8 @@ class KonneHttpLogExtension:
                 return SectionLogUploader(site_id, client_id, log_url, interval)
             case LOG_TYPE.INCREASE:
                 log_url = f"http://{log_ip}/PlusNum/AddPlusNumLog"
-                return IncreaseLogUploader(site_id, client_id, log_url)
+                reset_id_url = f"http://{log_ip}/PlusNum/ResetMaxNumber"
+                return IncreaseLogUploader(site_id, client_id, log_url, reset_id_url)
             case _:
                 logger.error(f"<{type(log_type)} : {log_type}> log_type参数错误，为了防止错误提交，停止程序")
                 crawler.engine.close_spider(crawler.spider, "log_type_error")

@@ -3,7 +3,6 @@ import logging
 
 import aio_pika
 from scrapy import Spider
-from scrapy_konne.constants import LANG
 from scrapy_konne.exceptions import ItemUploadError
 from scrapy_konne.items import DetailDataItem
 from scrapy_konne.pipelines.konnebase import BaseKonneRemotePipeline
@@ -85,6 +84,9 @@ class KonneUploaderPipeline(BaseKonneRemotePipeline):
 
 
 class KonneExtraTerritoryUploaderPipeline:
+    """
+    境外数据上传pipeline，用于上传数据到境外rabbitmq。
+    """
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -113,7 +115,7 @@ class KonneExtraTerritoryUploaderPipeline:
             "sourceUrl": item.source_url,
             "mediaType": 1,  # 媒体类型
             "columnId": 0,  # 采集栏目ID
-            "language": spider.language,
+            "language": spider.language.value,
         }
         return aio_pika.Message(body=orjson.loads(info))
 

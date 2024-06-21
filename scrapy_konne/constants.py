@@ -1,4 +1,5 @@
 from enum import Enum
+import json
 
 
 class LOG_TYPE(Enum):
@@ -60,3 +61,4 @@ class LANG(Enum):
     """阿拉伯语"""
     OTHER = 99
     """其他语言"""
+
