@@ -81,6 +81,15 @@ class IncreaseLogUploader(BaseLogUploader):
                     return True
         return False
 
+    async def send_log(self, stat):
+        """提交日志"""
+        async with self.session.post(self.log_url, data=stat) as response:
+            if response.status == 200:
+                result = await response.json()
+                if result.get("code") == 0:
+                    return True
+        return False
+
     async def item_scraped(self, item: IncreamentItem, response, spider):
         """提交日志"""
         pubtime_str = item.publish_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -97,15 +106,6 @@ class IncreaseLogUploader(BaseLogUploader):
             self.log_success_count += 1
         else:
             logger.warn(f"[{self.client_id}] 自增日志提交失败")
-
-    async def send_log(self, stat):
-        """提交日志"""
-        async with self.session.post(self.log_url, data=stat) as response:
-            if response.status == 200:
-                result = await response.json()
-                if result.get("code") == 0:
-                    return True
-        return False
 
 
 class SectionLogUploader(BaseLogUploader):
@@ -139,7 +139,7 @@ class SectionLogUploader(BaseLogUploader):
         connect_signal = spider.crawler.signals.connect
         connect_signal(self.item_scraped, signal=signals.item_passed)
         connect_signal(self.request_scheduled, signal=signals.request_scheduled)
-        self.looping_task = asyncio.get_event_loop().create_task(self.log_stats())
+        self.timer = asyncio.get_event_loop().create_task(self.log_timer())
         self.log_success_count = 0
         logger.info("开启板块日志拓展")
 
@@ -151,7 +151,7 @@ class SectionLogUploader(BaseLogUploader):
 
     async def spider_closed(self, spider, reason):
         # 取消定时任务并提交日志
-        self.looping_task.cancel()
+        self.timer.cancel()
         await self.log_stats()
         await self.session.close()
 
