@@ -67,6 +67,8 @@ class IncreaseLogUploader(BaseLogUploader):
                 logger.info(f"重置自增长id为{spider.cursor}成功")
             else:
                 logger.warn(f"重置自增长id为{spider.cursor}失败")
+        else:
+            logger.info("本轮无新数据，无需重置自增长id")
         await self.session.close()
 
     async def reset_max_num(self, num):
