@@ -3,6 +3,7 @@ import logging
 
 import aio_pika
 from scrapy import Spider
+from scrapy_konne.constants import LANG
 from scrapy_konne.exceptions import ItemUploadError
 from scrapy_konne.items import DetailDataItem
 from scrapy_konne.pipelines.konnebase import BaseKonneRemotePipeline
@@ -83,8 +84,6 @@ class KonneUploaderPipeline(BaseKonneRemotePipeline):
                 return bool(result)
 
 
-
-
 class KonneExtraTerritoryUploaderPipeline:
 
     @classmethod
@@ -95,7 +94,6 @@ class KonneExtraTerritoryUploaderPipeline:
         cls.routing_key = settings.get("EXTRATERRITORIAL_ROUTING_KEY")
 
     async def open_spider(self, spider):
-        self.site_id = spider.site_id
         self.pika_connection = await aio_pika.connect_robust(url=self.upload_url)
         self.channel = await self.pika_connection.channel()
         self.exchange = await self.channel.get_exchange(self.exchange_name)
@@ -103,9 +101,9 @@ class KonneExtraTerritoryUploaderPipeline:
     async def upload(self, data):
         return await self.exchange.publish(data, routing_key=self.routing_key)
 
-    def make_data(self, item):
+    def make_data(self, item: DetailDataItem, spider):
         info = {
-            "accountId": self.site_id,
+            "accountId": spider.site_id,
             "title": item.title,
             "content": item.content,
             "author": item.author,
@@ -115,12 +113,12 @@ class KonneExtraTerritoryUploaderPipeline:
             "sourceUrl": item.source_url,
             "mediaType": 1,  # 媒体类型
             "columnId": 0,  # 采集栏目ID
-            # "language": data["LanguageID"],
+            "language": spider.language,
         }
         return aio_pika.Message(body=orjson.loads(info))
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
-        data = self.make_data(item)
+        data = self.make_data(item, spider)
         if not await self.upload(data):
             raise ItemUploadError(f"item上传失败: {data}")
         return item

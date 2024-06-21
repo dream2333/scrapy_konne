@@ -93,4 +93,4 @@ class RedisScheduler(BaseScheduler):
 
     def request_callback_done(self, signal, sender, request, spider):
         # self.redis_mq.ack(request.bindata)
-        ...
+        pass
