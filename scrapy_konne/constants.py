@@ -6,12 +6,12 @@ class LOG_TYPE(Enum):
     """
     日志类型
 
-    - NO_REMOTE_LOG: 不开启远程日志记录
+    - NO_LOG: 不开启远程日志记录
     - SECTION: 板块
     - INCREASE: 自增
     """
 
-    NO_REMOTE_LOG = -1
+    NO_LOG = -1
     SECTION = 0
     INCREASE = 1
 

@@ -1,12 +1,15 @@
 import csv
 import logging
-
+from aiohttp import ClientSession
+from scrapy import signals
+from scrapy.crawler import Crawler
 import aio_pika
 from scrapy import Spider
 from scrapy_konne.exceptions import ItemUploadError
 from scrapy_konne.items import DetailDataItem
-from scrapy_konne.pipelines.konnebase import BaseKonneRemotePipeline
 import orjson
+
+logger = logging.getLogger(__name__)
 
 
 class PrintItemPipeline:
@@ -49,10 +52,30 @@ class CSVWriterPipeline:
         return item
 
 
-class KonneUploaderPipeline(BaseKonneRemotePipeline):
+class KonneUploaderPipeline:
     """
     数据上传pipeline，用于上传板块和自增数据到数据库。
     """
+
+    upload_and_filter_api: str
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        upload_ip = crawler.settings.get("UPLOAD_DATA_IP")
+        cls.upload_and_filter_api = f"http://{upload_ip}/Data/AddDataAndQuChong"
+        uploader = cls()
+        crawler.signals.connect(uploader.spider_closed, signal=signals.spider_closed)
+        return uploader
+
+    def open_spider(self, spider: Spider):
+        logger.info("正在打开数据上传管道")
+        self.session = ClientSession()
+        logger.info("数据上传管道已打开")
+
+    async def spider_closed(self, spider: Spider):
+        logger.info("正在关闭数据上传管道")
+        await self.session.close()
+        logger.info("数据上传管道已关闭")
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
         data = {
@@ -77,7 +100,7 @@ class KonneUploaderPipeline(BaseKonneRemotePipeline):
         return item
 
     async def upload(self, data):
-        async with self.session.post(self.upload_and_filter_url, data=data) as response:
+        async with self.session.post(self.upload_and_filter_api, data=data) as response:
             result = await response.json()
             if isinstance(result, int):
                 return bool(result)
@@ -89,19 +112,31 @@ class KonneExtraTerritoryUploaderPipeline:
     """
 
     @classmethod
-    def from_crawler(cls, crawler):
+    def from_crawler(cls, crawler: Crawler):
         settings = crawler.settings
         cls.upload_url = settings.get("EXTRATERRITORIAL_RABBITMQ_URL")
         cls.exchange_name = settings.get("EXTRATERRITORIAL_EXCHANGE_NAME")
         cls.routing_key = settings.get("EXTRATERRITORIAL_ROUTING_KEY")
-
-    async def open_spider(self, spider):
+        uploader = cls()
+        crawler.signals.connect(uploader.spider_opened, signal=signals.spider_opened)
+        crawler.signals.connect(uploader.spider_closed, signal=signals.spider_closed)
+        return uploader
+ 
+    async def spider_opened(self, spider):
+        logger.info("正在打开境外数据上传管道")
         self.pika_connection = await aio_pika.connect_robust(url=self.upload_url)
         self.channel = await self.pika_connection.channel()
         self.exchange = await self.channel.get_exchange(self.exchange_name)
+        logger.info("境外数据上传管道已打开")
+
+    async def spider_closed(self, spider, reason):
+        logger.info("正在关闭境外数据上传管道")
+        await self.pika_connection.close()
+        logger.info("境外数据上传管道已关闭")
 
     async def upload(self, data):
-        return await self.exchange.publish(data, routing_key=self.routing_key)
+        data = await self.exchange.publish(data, routing_key=self.routing_key)
+        return data
 
     def make_data(self, item: DetailDataItem, spider):
         info = {
@@ -109,15 +144,15 @@ class KonneExtraTerritoryUploaderPipeline:
             "title": item.title,
             "content": item.content,
             "author": item.author,
-            "publishTime": item.publish_time,
+            "publishTime": item.publish_time.strftime("%Y-%m-%d %H:%M:%S"),
             "source": item.source,
             "sourceSite": "",  # 来源网站
             "sourceUrl": item.source_url,
-            "mediaType": 1,  # 媒体类型
+            "mediaType": item.media_type,  # 媒体类型
             "columnId": 0,  # 采集栏目ID
             "language": spider.language.value,
         }
-        return aio_pika.Message(body=orjson.loads(info))
+        return aio_pika.Message(body=orjson.dumps(info))
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
         data = self.make_data(item, spider)

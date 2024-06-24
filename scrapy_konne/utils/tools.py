@@ -2,7 +2,9 @@ import re
 import datetime
 from lxml.html.clean import Cleaner
 
-tag_cleaner = Cleaner(style=True, scripts=True, page_structure=False, safe_attrs_only=False)
+tag_cleaner = Cleaner(
+    style=True, scripts=True, page_structure=False, safe_attrs_only=False, remove_tags=("br", "p")
+)
 
 
 _regexs = {}

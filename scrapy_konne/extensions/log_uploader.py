@@ -30,7 +30,7 @@ class BaseLogUploader(metaclass=ABCMeta):
 class NoLogUploader(BaseLogUploader):
     """无远程日志上传器"""
 
-    logger_type = LOG_TYPE.NO_REMOTE_LOG
+    logger_type = LOG_TYPE.NO_LOG
 
     def __init__(self) -> None:
         pass

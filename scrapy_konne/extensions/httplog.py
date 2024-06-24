@@ -36,7 +36,7 @@ class KonneHttpLogExtension:
         log_type = getattr(crawler.spider, "log_type", LOG_TYPE.SECTION)
         # 根据不同的日志类型选择不同的上传器
         match (log_type):
-            case LOG_TYPE.NO_REMOTE_LOG:
+            case LOG_TYPE.NO_LOG:
                 return NoLogUploader()
             case LOG_TYPE.SECTION:
                 log_url = f"http://{log_ip}/Log/AddSectionLog"
