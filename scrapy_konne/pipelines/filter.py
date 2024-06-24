@@ -7,7 +7,7 @@ from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem, IncreamentItem
 from scrapy_konne.exceptions import MemorySetDuplicateItem, RemoteDuplicateItem
 from scrapy_konne.exceptions import ExpriedItem
-from scrapy_konne.pipelines.konnebase import BaseKonneRemotePipeline
+
 
 
 logger = logging.getLogger(__name__)
@@ -88,21 +88,29 @@ class TimeFilterPipeline:
         return item
 
 
-class KonneHttpFilterPipeline(BaseKonneRemotePipeline):
+class KonneHttpFilterPipeline:
     """对konne库中已存在的url进行过滤, 并加入redis缓存"""
 
-    async def is_url_exist(self, url):
-        filter_url = self.uri_is_exist_url
-        params = {"url": url}
-        async with self.session.get(filter_url, params=params) as response:
-            result = await response.json()
-            if isinstance(result, int):
-                return bool(result)
+    uri_deduplication_api: str
 
     def open_spider(self, spider: Spider):
         super().open_spider(spider)
         self.crawler = spider.crawler
         self.redis_key = "dupefilter:" + spider.name
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        upload_ip = crawler.settings.get("UPLOAD_DATA_IP")
+        cls.uri_deduplication_api = f"http://{upload_ip}/QuChong/ExistUrl"
+        return cls()
+
+    async def is_url_exist(self, url):
+        filter_url = self.uri_deduplication_api
+        params = {"url": url}
+        async with self.session.get(filter_url, params=params) as response:
+            result = await response.json()
+            if isinstance(result, int):
+                return bool(result)
 
     @property
     def redis_client(self):

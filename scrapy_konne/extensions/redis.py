@@ -17,6 +17,7 @@ class GlobalRedisExtension:
     def __init__(self, redis_url):
         self.redis_url = redis_url
         self.client = None
+        self.sync_client = None
         self._lock = Lock()
 
     @classmethod
