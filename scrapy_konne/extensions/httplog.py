@@ -29,8 +29,6 @@ class KonneHttpLogExtension:
         """
         根据爬虫的配置生成不同的日志上传器
         """
-        site_id = getattr(crawler.spider, "site_id")
-        client_id = getattr(crawler.spider, "client_id")
         log_ip = crawler.settings.get("LOG_IP")
         # 默认为板块日志
         log_type = getattr(crawler.spider, "log_type", LOG_TYPE.SECTION)
@@ -39,10 +37,14 @@ class KonneHttpLogExtension:
             case LOG_TYPE.NO_LOG:
                 return NoLogUploader()
             case LOG_TYPE.SECTION:
+                site_id = getattr(crawler.spider, "site_id")
+                client_id = getattr(crawler.spider, "client_id")
                 log_url = f"http://{log_ip}/Log/AddSectionLog"
                 interval = crawler.settings.getfloat("UPLOAD_LOG_INTERVAL")
                 return SectionLogUploader(site_id, client_id, log_url, interval)
             case LOG_TYPE.INCREASE:
+                site_id = getattr(crawler.spider, "site_id")
+                client_id = getattr(crawler.spider, "client_id")
                 log_url = f"http://{log_ip}/PlusNum/AddPlusNumLog"
                 reset_id_url = f"http://{log_ip}/PlusNum/ResetMaxNumber"
                 return IncreaseLogUploader(site_id, client_id, log_url, reset_id_url)
