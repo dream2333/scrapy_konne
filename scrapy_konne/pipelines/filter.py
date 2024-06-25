@@ -102,6 +102,8 @@ class KonneHttpFilterPipeline:
         logger.info("正在关闭数据上传管道")
         await self.session.close()
         logger.info("数据上传管道已关闭")
+        self.session = ClientSession()
+
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
