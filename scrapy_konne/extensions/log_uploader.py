@@ -124,6 +124,7 @@ class SectionLogUploader(BaseLogUploader):
         self.log_url = log_url
         self.session = ClientSession()
         self.interval = interval
+        self.log_success_count = 0
         self.timer = None
 
     @property
@@ -146,7 +147,6 @@ class SectionLogUploader(BaseLogUploader):
         connect_signal(self.item_scraped, signal=signals.item_passed)
         connect_signal(self.request_scheduled, signal=signals.request_scheduled)
         self.timer = asyncio.get_event_loop().create_task(self.log_timer())
-        self.log_success_count = 0
         logger.info("开启板块日志拓展")
 
     async def log_timer(self):
