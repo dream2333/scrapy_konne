@@ -1,13 +1,13 @@
 import time
+from aiohttp import ClientSession
 import mmh3
 import logging
 from datetime import datetime, timedelta
-from scrapy import Spider
+from scrapy import Spider,signals
 from scrapy.crawler import Crawler
 from scrapy_konne.items import DetailDataItem, IncreamentItem
 from scrapy_konne.exceptions import MemorySetDuplicateItem, RemoteDuplicateItem
 from scrapy_konne.exceptions import ExpriedItem
-
 
 
 logger = logging.getLogger(__name__)
@@ -96,12 +96,20 @@ class KonneHttpFilterPipeline:
     def open_spider(self, spider: Spider):
         self.crawler = spider.crawler
         self.redis_key = "dupefilter:" + spider.name
+        self.session = ClientSession()
+
+    async def spider_closed(self, spider: Spider):
+        logger.info("正在关闭数据上传管道")
+        await self.session.close()
+        logger.info("数据上传管道已关闭")
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
         upload_ip = crawler.settings.get("UPLOAD_DATA_IP")
-        cls.uri_deduplication_api = f"http://{upload_ip}/QuChong/ExistUrl"
-        return cls()
+        filter = cls()
+        filter.uri_deduplication_api = f"http://{upload_ip}/QuChong/ExistUrl"
+        crawler.signals.connect(filter.spider_closed, signal=signals.spider_closed)
+        return filter
 
     async def is_url_exist(self, url):
         filter_url = self.uri_deduplication_api
