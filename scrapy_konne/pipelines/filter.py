@@ -94,7 +94,6 @@ class KonneHttpFilterPipeline:
     uri_deduplication_api: str
 
     def open_spider(self, spider: Spider):
-        super().open_spider(spider)
         self.crawler = spider.crawler
         self.redis_key = "dupefilter:" + spider.name
 
