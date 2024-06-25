@@ -35,6 +35,9 @@ class NoLogUploader(BaseLogUploader):
     def __init__(self) -> None:
         pass
 
+    def send_log(self, stat):
+        logger.error("当前爬虫未开启远程日志记录，不上传日志")
+
     def spider_opened(self, spider):
         logger.info("当前爬虫未开启日志拓展")
 
@@ -121,6 +124,7 @@ class SectionLogUploader(BaseLogUploader):
         self.log_url = log_url
         self.session = ClientSession()
         self.interval = interval
+        self.timer = None
 
     @property
     def stats(self):
@@ -153,7 +157,8 @@ class SectionLogUploader(BaseLogUploader):
 
     async def spider_closed(self, spider, reason):
         # 取消定时任务并提交日志
-        self.timer.cancel()
+        if self.timer:
+            self.timer.cancel()
         await self.log_stats()
         await self.session.close()
 
