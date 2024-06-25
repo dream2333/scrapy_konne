@@ -33,7 +33,7 @@ class NoLogUploader(BaseLogUploader):
     logger_type = LOG_TYPE.NO_LOG
 
     def __init__(self) -> None:
-        pass
+        self.log_success_count = 0
 
     def send_log(self, stat):
         logger.error("当前爬虫未开启远程日志记录，不上传日志")
