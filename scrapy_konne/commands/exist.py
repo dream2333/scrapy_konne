@@ -1,9 +1,9 @@
 from redis import Redis
-import mmh3
 import requests
 from scrapy.commands import ScrapyCommand
 from scrapy.exceptions import UsageError
 from scrapy.utils.project import get_project_settings
+from scrapy_konne.utils.fingerprint import get_url_fp
 
 settings = get_project_settings()
 
@@ -11,7 +11,7 @@ settings = get_project_settings()
 def redis_filter(url, source):
     redis_url = settings.get("REDIS_URL")
     client = Redis.from_url(redis_url)
-    hash_value = mmh3.hash128(url)
+    hash_value = get_url_fp(url)
     result = client.zscore(f"dupefilter:{source}", hash_value)
     if result:
         return True
@@ -48,7 +48,9 @@ class Exist(ScrapyCommand):
             if len(args) != 0:
                 raise UsageError("参数数量不对")
             if len(args) == 0:
-                print("\033[91m框架在去重时采用 内存->redis->公司接口 三级去重方案确保去重稳定性和速度\n此功能可以查询数据是否在redis或公司去重库中存在\033[0m")
+                print(
+                    "\033[91m框架在去重时采用 内存->redis->公司接口 三级去重方案确保去重稳定性和速度\n此功能可以查询数据是否在redis或公司去重库中存在\033[0m"
+                )
                 dup_value = input("请输入url或自增id:")
             try:
                 int(dup_value)
