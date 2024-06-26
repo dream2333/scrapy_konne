@@ -63,10 +63,10 @@ class KonneUploaderPipeline:
         spider_locale = getattr(crawler.spider, "locale", LOCALE.CN)
         match (spider_locale):
             case LOCALE.CN:
-                logger.info("选择境内上传器")
+                logger.info("选择境内http上传器")
                 uploader = KonneTerritoryUploaderPipeline
             case _:
-                logger.info("选择境外上传器")
+                logger.info("选择境外rabbitmq上传器")
                 uploader = KonneExtraTerritoryUploaderPipeline
         return uploader.from_crawler(crawler)
 
@@ -87,14 +87,10 @@ class KonneTerritoryUploaderPipeline:
         return uploader
 
     def open_spider(self, spider: Spider):
-        logger.info("正在打开数据上传管道")
         self.session = ClientSession()
-        logger.info("数据上传管道已打开")
 
     async def spider_closed(self, spider: Spider):
-        logger.info("正在关闭数据上传管道")
         await self.session.close()
-        logger.info("数据上传管道已关闭")
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
         data = {
@@ -142,16 +138,16 @@ class KonneExtraTerritoryUploaderPipeline:
         return uploader
 
     async def spider_opened(self, spider):
-        logger.info("正在打开境外数据上传管道")
+        logger.info("正在打开rabbitmq上传管道")
         self.pika_connection = await aio_pika.connect_robust(url=self.upload_url)
         self.channel = await self.pika_connection.channel()
         self.exchange = await self.channel.get_exchange(self.exchange_name)
-        logger.info("境外数据上传管道已打开")
+        logger.info("rabbitmq上传管道已打开")
 
     async def spider_closed(self, spider, reason):
-        logger.info("正在关闭境外数据上传管道")
+        logger.info("正在关闭rabbitmq上传管道")
         await self.pika_connection.close()
-        logger.info("境外数据上传管道已关闭")
+        logger.info("rabbitmq上传管道已关闭")
 
     async def upload(self, data):
         data = await self.exchange.publish(data, routing_key=self.routing_key)
