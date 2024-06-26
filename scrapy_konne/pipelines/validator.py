@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 class FieldValidatorPipeline:
+    """
+    用于验证DetailDataItem的字段。
+    
+    该类会检查DetailDataItem的字段是否符合规范，包括字段类型检查、字段非空检查、时间戳检查。
+    """
     __not_empty_fields__ = ["source_url", "title", "source", "publish_time"]
 
     def process_item(self, item: DetailDataItem, spider: Spider):

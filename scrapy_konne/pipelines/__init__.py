@@ -2,6 +2,7 @@ from scrapy_konne.pipelines.filter import (
     RedisFilteredUrlUploaderPipeline,
     SetFilterPipeline,
     TimeFilterPipeline,
+    TimeFilterWithAddToRedisPipeline,
     KonneHttpFilterPipeline,
 )
 from scrapy_konne.pipelines.formator import TimeFormatorPipeline, ReplaceHtmlEntityPipeline
@@ -20,6 +21,7 @@ __all__ = [
     "KonneUploaderPipeline",
     "PrintItemPipeline",
     "RedisFilteredUrlUploaderPipeline",
+    "TimeFilterWithAddToRedisPipeline",
     "SetFilterPipeline",
     "TimeFilterPipeline",
     "KonneHttpFilterPipeline",
