@@ -1,3 +1,4 @@
+import os
 import traceback
 from typing import Any, Iterable, Union, cast
 from pymongo import MongoClient
@@ -73,7 +74,7 @@ class IncreaseSpider(Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        is_production = crawler.settings.getbool("PROJECT_ENV_IS_PRODUCTION")
+        is_production = bool(os.environ.get("SCRAPYD_JOB", False))
         mongo_url = crawler.settings.get("MONGO_URL")
         spider = super().from_crawler(crawler, cls.name, is_production, mongo_url, **kwargs)
         spider.settings["SPIDER_MIDDLEWARES"][IncreaseSpiderMiddleware] = 0
