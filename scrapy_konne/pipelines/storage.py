@@ -164,7 +164,7 @@ class KonneExtraTerritoryUploaderPipeline:
             "sourceSite": "",  # 来源网站
             "sourceUrl": item.source_url,
             "mediaType": item.media_type,  # 媒体类型
-            "columnId": 0,  # 采集栏目ID
+            "columnId": item.page_crawl_id,  # 采集栏目ID
             "language": spider.language.value,
         }
         return aio_pika.Message(body=orjson.dumps(info))
