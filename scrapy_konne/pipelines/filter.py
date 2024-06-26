@@ -116,10 +116,10 @@ class KonneHttpFilterPipeline:
         spider_locale = getattr(crawler.spider, "locale", LOCALE.CN)
         match (spider_locale):
             case LOCALE.CN:
-                logger.info("选择境内上传器")
+                logger.info("选择境内http过滤器")
                 filter = KonneTerritoryFilterPipeline
             case _:
-                logger.info("选择境外上传器")
+                logger.info("选择境外http过滤器")
                 filter = KonneExtraTerritoryFilterPipeline
         return filter.from_crawler(crawler)
 
