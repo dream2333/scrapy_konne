@@ -2,7 +2,8 @@ import asyncio
 from scrapy import Request
 from scrapy.crawler import Crawler
 import logging
-import mmh3
+from scrapy_konne.utils.fingerprint import get_url_fp
+
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +60,12 @@ class UrlRedisDupefilterMiddleware:
                 return None
             url = request.meta.get("filter_url")
             if url:
-                hash_value = mmh3.hash128(request.meta["filter_url"])
+                hash_value = get_url_fp(request.meta["filter_url"])
                 if await self.get_redis_client().zscore(self.redis_key, hash_value):
                     return url
         return None
 
-    def is_dup_request_sync(self, request):
+    def is_dup_request_sync(self, request: Request):
         if request.dont_filter is False:
             cursor = request.meta.get("cursor")
             if cursor:
@@ -73,7 +74,7 @@ class UrlRedisDupefilterMiddleware:
                 return None
             url = request.meta.get("filter_url")
             if url:
-                hash_value = mmh3.hash128(request.meta["filter_url"])
+                hash_value = get_url_fp(request.meta["filter_url"])
                 if self.get_redis_client(sync=True).zscore(self.redis_key, hash_value):
                     return cursor
         return None

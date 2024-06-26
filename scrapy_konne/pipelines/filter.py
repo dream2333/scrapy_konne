@@ -1,6 +1,5 @@
 import time
 from aiohttp import ClientSession
-import mmh3
 import logging
 from datetime import datetime, timedelta
 from scrapy import Spider, signals
@@ -9,7 +8,7 @@ from scrapy_konne.constants import LOCALE
 from scrapy_konne.items import DetailDataItem, IncreamentItem
 from scrapy_konne.exceptions import MemorySetDuplicateItem, RemoteDuplicateItem
 from scrapy_konne.exceptions import ExpriedItem
-
+from scrapy_konne.utils.fingerprint import get_url_fp
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ async def add_fp_to_redis(redis_key: str, redis_client, item: DetailDataItem | I
     if isinstance(item, IncreamentItem):
         fp = item.increment_id
     else:
-        fp = mmh3.hash128(item.source_url)
+        fp = get_url_fp(item.source_url)
     hash_mapping = {fp: int(time.time() * 1000)}
     await redis_client.zadd(redis_key, hash_mapping, nx=True)
 
@@ -125,7 +124,7 @@ class KonneHttpFilterPipeline:
 
 
 class KonneExtraTerritoryFilterPipeline:
-    """对konne海外库中已存在的url进行过滤, 太慢了不如不过滤"""
+    """TODO: 对konne海外库中已存在的url进行过滤"""
 
     def process_item(self, item: DetailDataItem, spider: Spider):
         return item
