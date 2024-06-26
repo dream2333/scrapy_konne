@@ -4,13 +4,46 @@ import logging
 import time
 
 from scrapy.crawler import Crawler
-from scrapy.core.downloader.handlers.http11 import TunnelError, TimeoutError
+from scrapy.core.downloader.handlers.http11 import TunnelError
+from scrapy.exceptions import NotConfigured
+from scrapy_konne.constants import LOCALE
 
 
 logger = logging.getLogger(__name__)
 
 
 class ProxyPoolDownloaderMiddleware:
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        spider_locale = getattr(crawler.spider, "locale", LOCALE.CN)
+        match (spider_locale):
+            case LOCALE.CN:
+                logger.info("选择境内代理池")
+                proxy_cls = RedisProxyPoolDownloaderMiddleware
+            case _:
+                logger.info("选择境外代理池，所有请求默认全部走代理")
+                proxy_cls = ExtraTerritoryProxyDownloaderMiddleware
+        return proxy_cls.from_crawler(crawler)
+
+
+class ExtraTerritoryProxyDownloaderMiddleware(object):
+
+    def __init__(self, v2ray_tunnel_url: str) -> None:
+        self.v2ray_tunnel_url = v2ray_tunnel_url
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        v2ray_tunnel_url = crawler.settings.get("OVERSEA_PROXY_URL")
+        if not v2ray_tunnel_url:
+            raise NotConfigured("请配置境外代理地址")
+        return cls(v2ray_tunnel_url)
+
+    def process_request(self, request, spider):
+        request.meta["proxy"] = self.v2ray_tunnel_url
+
+
+class RedisProxyPoolDownloaderMiddleware:
 
     def __init__(self, crawler: Crawler) -> None:
         self.catch_exceptions = [TunnelError]
