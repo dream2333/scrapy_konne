@@ -6,6 +6,7 @@ from scrapy.crawler import Crawler
 import aio_pika
 from scrapy import Spider
 from scrapy_konne.exceptions import ItemUploadError
+from scrapy_konne.constants import LOCALE
 from scrapy_konne.items import DetailDataItem
 import orjson
 
@@ -53,6 +54,24 @@ class CSVWriterPipeline:
 
 
 class KonneUploaderPipeline:
+    """
+    数据上传pipeline，根据境外境内选择不同的上传Uploader
+    """
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        spider_locale = getattr(crawler.spider, "locale", LOCALE.CN)
+        match (spider_locale):
+            case LOCALE.CN:
+                logger.info("选择境内上传器")
+                uploader = KonneTerritoryUploaderPipeline
+            case _:
+                logger.info("选择境外上传器")
+                uploader = KonneExtraTerritoryUploaderPipeline
+        return uploader.from_crawler(crawler)
+
+
+class KonneTerritoryUploaderPipeline:
     """
     数据上传pipeline，用于上传板块和自增数据到数据库。
     """
@@ -121,7 +140,7 @@ class KonneExtraTerritoryUploaderPipeline:
         crawler.signals.connect(uploader.spider_opened, signal=signals.spider_opened)
         crawler.signals.connect(uploader.spider_closed, signal=signals.spider_closed)
         return uploader
- 
+
     async def spider_opened(self, spider):
         logger.info("正在打开境外数据上传管道")
         self.pika_connection = await aio_pika.connect_robust(url=self.upload_url)

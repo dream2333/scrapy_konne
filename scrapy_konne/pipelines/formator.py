@@ -12,7 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 class TimeFormatorPipeline:
+    """
+    TimeFormatorPipeline类用于处理时间字段。
 
+        该类可以处理三种时间字段的类型：
+
+        1. 字符串类型（例如"2021-01-01 00:00:00"）
+        2. 时间戳类型（例如1610000000）
+        3. datetime类型（例如datetime.datetime对象）
+
+        会将这三种类型的时间字段统一转换为datetime.datetime对象，并将其转换为UTC+8时区。
+    """
     def process_item(self, item: DetailDataItem, spider: Spider):
         if isinstance(item.publish_time, str):
             item.publish_time = self.str_to_datetime_utc8(item.publish_time)

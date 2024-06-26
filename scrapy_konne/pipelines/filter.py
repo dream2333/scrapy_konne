@@ -3,8 +3,9 @@ from aiohttp import ClientSession
 import mmh3
 import logging
 from datetime import datetime, timedelta
-from scrapy import Spider,signals
+from scrapy import Spider, signals
 from scrapy.crawler import Crawler
+from scrapy_konne.constants import LOCALE
 from scrapy_konne.items import DetailDataItem, IncreamentItem
 from scrapy_konne.exceptions import MemorySetDuplicateItem, RemoteDuplicateItem
 from scrapy_konne.exceptions import ExpriedItem
@@ -62,6 +63,25 @@ class SetFilterPipeline:
 
 
 class TimeFilterPipeline:
+    """超过时效的数据预过滤"""
+
+    def __init__(self, crawler: Crawler) -> None:
+        self.expired_time = crawler.settings.getint("ITEM_FILTER_TIME", 72)
+        self.crawler = crawler
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        return cls(crawler)
+
+    async def process_item(self, item: DetailDataItem, spider: Spider):
+        # 时区转换
+        dis_time = datetime.now().astimezone() - timedelta(hours=self.expired_time)
+        if item.publish_time < dis_time:
+            raise ExpriedItem(f"发布时间超过{self.expired_time}小时，不需要上传: {item}")
+        return item
+
+
+class TimeFilterWithAddToRedisPipeline(TimeFilterPipeline):
     """超过时效的数据预过滤，并加入redis缓存"""
 
     def __init__(self, crawler: Crawler) -> None:
@@ -84,12 +104,39 @@ class TimeFilterPipeline:
         dis_time = datetime.now().astimezone() - timedelta(hours=self.expired_time)
         if item.publish_time < dis_time:
             await add_fp_to_redis(self.redis_key, self.redis_client, item)
-            raise ExpriedItem(f"发布时间超过{self.expired_time}，不需要上传: {item}")
+            raise ExpriedItem(f"发布时间超过{self.expired_time}小时，不需要上传: {item}")
         return item
 
 
 class KonneHttpFilterPipeline:
-    """对konne库中已存在的url进行过滤, 并加入redis缓存"""
+    """对konne库中已存在的url进行过滤"""
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        spider_locale = getattr(crawler.spider, "locale", LOCALE.CN)
+        match (spider_locale):
+            case LOCALE.CN:
+                logger.info("选择境内上传器")
+                filter = KonneTerritoryFilterPipeline
+            case _:
+                logger.info("选择境外上传器")
+                filter = KonneExtraTerritoryFilterPipeline
+        return filter.from_crawler(crawler)
+
+
+class KonneExtraTerritoryFilterPipeline:
+    """对konne海外库中已存在的url进行过滤, 太慢了不如不过滤"""
+
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        return item
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        return cls()
+
+
+class KonneTerritoryFilterPipeline:
+    """对konne国内库中已存在的url进行过滤, 并加入redis缓存"""
 
     uri_deduplication_api: str
 
@@ -99,11 +146,7 @@ class KonneHttpFilterPipeline:
         self.session = ClientSession()
 
     async def spider_closed(self, spider: Spider):
-        logger.info("正在关闭数据上传管道")
         await self.session.close()
-        logger.info("数据上传管道已关闭")
-        self.session = ClientSession()
-
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
