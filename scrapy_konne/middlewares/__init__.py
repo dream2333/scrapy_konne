@@ -1,5 +1,13 @@
 from .dupefilter import UrlRedisDupefilterMiddleware
-from .proxypool import RedisProxyPoolDownloaderMiddleware
-from .v2ray import V2rayProxyMiddleware
+from .proxypool import (
+    RedisProxyPoolDownloaderMiddleware,
+    ProxyPoolDownloaderMiddleware,
+    ExtraTerritoryProxyDownloaderMiddleware,
+)
 
-__all__ = ["UrlRedisDupefilterMiddleware", "RedisProxyPoolDownloaderMiddleware", "V2rayProxyMiddleware"]
+__all__ = [
+    "UrlRedisDupefilterMiddleware",
+    "RedisProxyPoolDownloaderMiddleware",
+    "ProxyPoolDownloaderMiddleware",
+    "ExtraTerritoryProxyDownloaderMiddleware",
+]
