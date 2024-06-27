@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+import re
 from scrapy import Spider
 
 from scrapy_konne.items import DetailDataItem
@@ -7,7 +8,6 @@ from scrapy_konne.exceptions import ItemFieldError
 from w3lib.html import replace_entities
 from dateutil.parser import parse as time_parse
 from scrapy_konne.utils.tools import format_time
-
 logger = logging.getLogger(__name__)
 
 
@@ -73,6 +73,18 @@ class TimeFormatorPipeline:
                 raise ItemFieldError(f"时间字符串无法被智能转换：{repr(time_str)}")
         return date_time.astimezone()
 
+class ContentFormatorPipeline:
+    """
+    ContentFormatorPipeline类用于处理content字段。
+
+    该类会将content字段中的html实体替换为对应的字符。
+    """
+
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        content = replace_entities(item.content)
+        content = re.sub(r'\s+', ' ', content)
+        content = re.sub(r'\n+', '\n', content)
+        return item
 
 class ReplaceHtmlEntityPipeline:
     """
