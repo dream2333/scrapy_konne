@@ -8,6 +8,8 @@ from scrapy_konne.exceptions import ItemFieldError
 from w3lib.html import replace_entities
 from dateutil.parser import parse as time_parse
 from scrapy_konne.utils.tools import format_time
+from w3lib.url import canonicalize_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -72,6 +74,19 @@ class TimeFormatorPipeline:
             except Exception:
                 raise ItemFieldError(f"时间字符串无法被智能转换：{repr(time_str)}")
         return date_time.astimezone()
+
+class UrlCanonicalizationPipeline:
+    """
+    UrlCanonicalizationPipeline类用于处理url字段。
+
+    该类会将url字段中的html实体替换为对应的字符。
+    """
+
+    def process_item(self, item: DetailDataItem, spider: Spider):
+        item.source_url = canonicalize_url(item.source_url)
+        return item
+
+
 
 class ContentFormatorPipeline:
     """
