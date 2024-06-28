@@ -5,7 +5,11 @@ from scrapy_konne.pipelines.filter import (
     TimeFilterWithAddToRedisPipeline,
     KonneHttpFilterPipeline,
 )
-from scrapy_konne.pipelines.formator import TimeFormatorPipeline, ReplaceHtmlEntityPipeline
+from scrapy_konne.pipelines.formator import (
+    TimeFormatorPipeline,
+    ReplaceHtmlEntityPipeline,
+    UrlCanonicalizationPipeline,
+)
 from scrapy_konne.pipelines.storage import (
     CSVWriterPipeline,
     KonneUploaderPipeline,
@@ -30,4 +34,5 @@ __all__ = [
     "FieldValidatorPipeline",
     "KonneUploadorPipeline",
     "KonneExtraTerritoryUploaderPipeline",
+    "UrlCanonicalizationPipeline"
 ]

@@ -55,7 +55,7 @@ class KonneWechatBotExtension:
                 ["请求过滤", redis_filtered_count, "无"],
                 ["item提交", item_scraped_count, "无"],
                 ["item过滤", item_dropped_count, "无"],
-                ["item总计", total_scraped_count, 0],
+                ["爬取总计", total_scraped_count, 0],
                 ["失败请求", retry_max_reached, self.failure_threshold],
                 ["错误日志", error_log, self.log_error_threshold],
             ]
