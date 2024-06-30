@@ -1,4 +1,4 @@
-from scrapy.exceptions import DropItem
+from scrapy.exceptions import DropItem, IgnoreRequest
 
 
 # item字段错误
@@ -27,3 +27,7 @@ class MemorySetDuplicateItem(SilentDropItem):
 # 在康奈的http接口中重复
 class RemoteDuplicateItem(SilentDropItem):
     pass
+
+
+class DuplicateRequest(IgnoreRequest):
+    """请求在redis库中重复"""

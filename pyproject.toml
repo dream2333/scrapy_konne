@@ -9,7 +9,7 @@ readme = "README.md"
 python = ">=3.11,<4.0"
 scrapy = "^2.11.2"
 aiohttp = "^3.9.5"
-redis = {extras = ["hiredis"], version = "^5.0.4"}
+redis = { extras = ["hiredis"], version = "^5.0.4" }
 ormsgpack = "^1.5.0"
 pymongo = "^4.7.3"
 tzdata = "^2024.1"
@@ -20,7 +20,10 @@ python-dateutil = "^2.9.0.post0"
 lxml-html-clean = "^0.1.1"
 aio-pika = "^9.4.1"
 orjson = "^3.10.5"
+scrapy-playwright = {version = "^0.0.36", optional = true}
 
+[tool.poetry.extras]
+playwright = ["scrapy-playwright"]
 
 [build-system]
 requires = ["poetry-core"]
