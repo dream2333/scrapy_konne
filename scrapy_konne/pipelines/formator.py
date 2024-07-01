@@ -25,6 +25,7 @@ class TimeFormatorPipeline:
 
         会将这三种类型的时间字段统一转换为datetime.datetime对象，并将其转换为UTC+8时区。
     """
+
     def process_item(self, item: DetailDataItem, spider: Spider):
         if isinstance(item.publish_time, str):
             item.publish_time = self.str_to_datetime_utc8(item.publish_time)
@@ -75,6 +76,7 @@ class TimeFormatorPipeline:
                 raise ItemFieldError(f"时间字符串无法被智能转换：{repr(time_str)}")
         return date_time.astimezone()
 
+
 class UrlCanonicalizationPipeline:
     """
     UrlCanonicalizationPipeline类用于处理url字段。
@@ -83,9 +85,8 @@ class UrlCanonicalizationPipeline:
     """
 
     def process_item(self, item: DetailDataItem, spider: Spider):
-        item.source_url = canonicalize_url(item.source_url)
+        item.source_url = canonicalize_url(item.source_url, keep_fragments=True)
         return item
-
 
 
 class ContentFormatorPipeline:
@@ -97,9 +98,10 @@ class ContentFormatorPipeline:
 
     def process_item(self, item: DetailDataItem, spider: Spider):
         content = replace_entities(item.content)
-        content = re.sub(r'\s+', ' ', content)
-        content = re.sub(r'\n+', '\n', content)
+        content = re.sub(r"\s+", " ", content)
+        content = re.sub(r"\n+", "\n", content)
         return item
+
 
 class ReplaceHtmlEntityPipeline:
     """
