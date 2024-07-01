@@ -4,7 +4,7 @@ from scrapy import signals
 from scrapy_konne.constants import LOG_TYPE
 from scrapy_konne.extensions.log_uploader import NoLogUploader, SectionLogUploader, IncreaseLogUploader
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("日志拓展")
 
 
 class KonneHttpLogExtension:

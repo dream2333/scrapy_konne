@@ -6,13 +6,12 @@ from scrapy import signals
 import logging
 import asyncio
 
-logger = logging.getLogger(__name__)
-
 
 class BaseLogUploader(metaclass=ABCMeta):
     """抽象基类，日志上传器必须继承于此类"""
 
     logger_type: LOG_TYPE
+    logger: logging.Logger
 
     @abstractmethod
     async def send_log(self, stat):
@@ -31,24 +30,26 @@ class NoLogUploader(BaseLogUploader):
     """无远程日志上传器"""
 
     logger_type = LOG_TYPE.NO_LOG
+    logger = logging.getLogger("无日志")
 
     def __init__(self) -> None:
         self.log_success_count = 0
 
     def send_log(self, stat):
-        logger.error("当前爬虫未开启远程日志记录，不上传日志")
+        self.logger.error("当前爬虫未开启远程日志记录，不上传日志")
 
     def spider_opened(self, spider):
-        logger.info("当前爬虫未开启日志拓展")
+        self.logger.info("当前爬虫未开启日志拓展")
 
     def spider_closed(self, spider, reason):
-        logger.info("当前爬虫未开启远程日志记录，不上传日志")
+        self.logger.info("当前爬虫未开启远程日志记录，不上传日志")
 
 
 class IncreaseLogUploader(BaseLogUploader):
     """自增日志上传器"""
 
     logger_type = LOG_TYPE.INCREASE
+    logger = logging.getLogger("自增日志")
 
     def __init__(self, site_id, client_id, log_url, reset_id_url) -> None:
         self.site_id = site_id
@@ -61,17 +62,17 @@ class IncreaseLogUploader(BaseLogUploader):
         connect_signal = spider.crawler.signals.connect
         connect_signal(self.item_scraped, signal=signals.item_passed)
         self.log_success_count = 0
-        logger.info("开启自增日志拓展")
+        self.logger.info("开启自增日志拓展")
 
     async def spider_closed(self, spider, reason):
         if spider._has_greater_cursor:
             result = await self.reset_max_num(spider.cursor)
             if result:
-                logger.info(f"重置自增长id为{spider.cursor}成功")
+                self.logger.info(f"重置自增长id为{spider.cursor}成功")
             else:
-                logger.warn(f"重置自增长id为{spider.cursor}失败")
+                self.logger.warn(f"重置自增长id为{spider.cursor}失败")
         else:
-            logger.info("本轮无新数据，无需重置自增长id")
+            self.logger.info("本轮无新数据，无需重置自增长id")
         await self.session.close()
 
     async def reset_max_num(self, num):
@@ -110,13 +111,14 @@ class IncreaseLogUploader(BaseLogUploader):
         if result:
             self.log_success_count += 1
         else:
-            logger.warn(f"[{self.client_id}] 自增日志提交失败")
+            self.logger.warn(f"[{self.client_id}] 自增日志提交失败")
 
 
 class SectionLogUploader(BaseLogUploader):
     """板块日志上传器"""
 
     logger_type = LOG_TYPE.SECTION
+    logger = logging.getLogger("板块日志")
 
     def __init__(self, site_id, client_id, log_url, interval) -> None:
         self.site_id = site_id
@@ -147,7 +149,7 @@ class SectionLogUploader(BaseLogUploader):
         connect_signal(self.item_scraped, signal=signals.item_passed)
         connect_signal(self.request_scheduled, signal=signals.request_scheduled)
         self.timer = asyncio.get_event_loop().create_task(self.log_timer())
-        logger.info("开启板块日志拓展")
+        self.logger.info("开启板块日志拓展")
 
     async def log_timer(self):
         """定时提交日志"""
@@ -178,10 +180,10 @@ class SectionLogUploader(BaseLogUploader):
         result = await self.send_log(self.stats)
         if result:
             self.reset_stats()
-            logger.info(f"[{self.client_id}] 日志提交成功: {formatted_stats}")
+            self.logger.info(f"[{self.client_id}] 日志提交成功: {formatted_stats}")
             self.log_success_count += 1
         else:
-            logger.warn(f"[{self.client_id}] 日志提交失败,当前状态为: {formatted_stats}")
+            self.logger.warn(f"[{self.client_id}] 日志提交失败,当前状态为: {formatted_stats}")
 
     async def send_log(self, stat):
         """提交日志"""
