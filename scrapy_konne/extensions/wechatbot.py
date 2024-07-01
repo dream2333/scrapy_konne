@@ -42,6 +42,7 @@ class KonneWechatBotExtension:
         error_log = stats.get("log_count/ERROR", 0)
         retry_max_reached = stats.get("retry/max_reached", 0)
         item_dropped_count = stats.get("item_dropped_count", 0)
+        proxies_fetch_count = stats.get("proxies/fetch_count", 0)
         total_scraped_count = item_dropped_count + item_scraped_count + redis_filtered_count
         errors = {
             "采集+去重数量为0": total_scraped_count == 0,
@@ -54,6 +55,7 @@ class KonneWechatBotExtension:
         if any(errors.values()):
             data = [
                 ["总耗时", elapsed_time_seconds, self.elapsed_time_threshold],
+                ["代理拉取", proxies_fetch_count, "无"],
                 ["请求过滤", redis_filtered_count, "无"],
                 ["item提交", item_scraped_count, "无"],
                 ["item过滤", item_dropped_count, "无"],
