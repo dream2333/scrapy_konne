@@ -32,7 +32,7 @@ class UrlRedisDupefilterDownloaderMiddleware:
             else:
                 # 如果是url，则判断url是否存在
                 url = request.meta.get("filter_url") or request.url
-                fp = get_url_fp(request.meta["filter_url"])
+                fp = get_url_fp(url)
                 if await self.get_redis_client().zscore(self.redis_key, fp):
                     return url
         return None
