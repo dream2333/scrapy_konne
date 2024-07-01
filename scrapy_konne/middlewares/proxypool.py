@@ -9,7 +9,7 @@ from scrapy.exceptions import NotConfigured
 from scrapy_konne.constants import LOCALE
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("代理池中间件")
 
 
 class ProxyPoolDownloaderMiddleware:
@@ -71,17 +71,15 @@ class RedisProxyPoolDownloaderMiddleware:
 
     async def process_exception(self, request, exception, spider):
         if request.meta.get("rotate_proxy"):
-            logger.debug(
-                "请求异常，切换代理 %(request)s: %(exception)s",
-                {"request": request, "exception": exception},
-                extra={"spider": spider},
-            )
-            request.meta["proxy"] = await self.get_proxy()
+            logger.debug(f"请求异常，切换代理 {request}: {exception}")
             for Exce in self.catch_exceptions:
                 if isinstance(exception, Exce):
                     return request
+            # 如果不是指定的异常，直接切换代理
+            request.meta["proxy"] = await self.get_proxy()
 
     async def get_proxy(self):
+        fetch_failed_times = 0
         while True:
             # 使用信号量控制拉取代理的协程数量，且不阻塞其他模块协程
             async with self._sem:
@@ -90,22 +88,27 @@ class RedisProxyPoolDownloaderMiddleware:
                     proxy_url, proxy_timestamp = self._proxies_cache.popitem(last=False)
                     elapsed_time = int(time.time() * 1000) - proxy_timestamp
                     if elapsed_time > self.expired_duration_ms:
-                        logger.debug(
-                            "代理过期 %(proxy_url)s: 来自%(elapsed_time)dms前",
-                            {"proxy_url": proxy_url, "elapsed_time": elapsed_time},
-                        )
+                        logger.debug(f"代理过期{proxy_url}: 来自{elapsed_time}ms前")
                         continue
                     return proxy_url
                 # 代理缓存为空时，从redis中取代理,并加入缓存
                 if not await self.fetch_proxies():
-                    logger.error("代理池为空，等待%(wait_time)s秒", {"wait_time": self.empty_wait_time})
+                    fetch_failed_times += 1
+                    if fetch_failed_times >= 5:
+                        logger.error("代理池拉取失败次数大于等于5次")
+                        fetch_failed_times = 0
+                    logger.warn(f"代理池为空，等待{self.empty_wait_time}秒")
                     await asyncio.sleep(self.empty_wait_time)
 
     async def fetch_proxies(self):
+        """
+        从远程代理池拉取代理, 并加入缓存
+        拉取到代理返回True，否则返回False
+        """
         result = await self.redis_client.zpopmin("proxies_pool", self.prefetch_nums)
         if not result:
             return False
-        logger.debug("从远程代理池拉取代理%(count)d个", {"count": len(result)})
+        logger.debug(f"从远程代理池拉取代理{len(result)}个")
         for proxy_url, proxy_timestamp in result:
             proxy_url = proxy_url.decode("utf-8")
             proxy_timestamp = int(proxy_timestamp)
