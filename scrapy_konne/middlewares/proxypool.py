@@ -72,11 +72,10 @@ class RedisProxyPoolDownloaderMiddleware:
     async def process_exception(self, request, exception, spider):
         if request.meta.get("rotate_proxy"):
             logger.debug(f"请求异常，切换代理 {request}: {exception}")
+            request.meta["proxy"] = await self.get_proxy()
             for Exce in self.catch_exceptions:
                 if isinstance(exception, Exce):
                     return request
-            # 如果不是指定的异常，直接切换代理
-            request.meta["proxy"] = await self.get_proxy()
 
     async def get_proxy(self):
         fetch_failed_times = 0
