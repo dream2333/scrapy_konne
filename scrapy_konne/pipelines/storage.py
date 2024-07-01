@@ -19,12 +19,30 @@ class PrintItemPipeline:
     """
 
     def __init__(self) -> None:
-        self.logger = logging.getLogger("管道末端")
+        self.logger = logging.getLogger("管道输出")
+        self.oldest_item = None
+        self.newest_item = None
 
     def process_item(self, item: DetailDataItem, spider: Spider):
+        # 记录最早和最新的item
+        if not self.oldest_item:
+            self.oldest_item = item
+        elif item.publish_time < self.oldest_item.publish_time:
+            self.oldest_item = item
+        if not self.newest_item:
+            self.newest_item = item
+        elif item.publish_time > self.newest_item.publish_time:
+            self.newest_item = item
+        # 输出当前item到日志
         message = f"{item.publish_time} | [{item.title}] | {item.source} | {item.source_url} | 作者: {item.author} | {repr(item.content)} | {item.video_url} media_type: {item.media_type} page_crawl_id:{item.page_crawl_id}"
         self.logger.info(message)
         return item
+
+    def close_spider(self, spider: Spider):
+        if self.oldest_item:
+            self.logger.info(f"[{self.oldest_item.publish_time}] 本轮最早item: {self.oldest_item}")
+        if self.newest_item:
+            self.logger.info(f"[{self.newest_item.publish_time}] 本轮最新item: {self.newest_item}")
 
 
 class CSVWriterPipeline:
