@@ -7,6 +7,7 @@ from scrapy.crawler import Crawler
 from scrapy.core.downloader.handlers.http11 import TunnelError
 from scrapy.exceptions import NotConfigured
 from scrapy_konne.constants import LOCALE
+from scrapy import signals
 
 
 logger = logging.getLogger("代理池中间件")
@@ -57,7 +58,12 @@ class RedisProxyPoolDownloaderMiddleware:
     @classmethod
     def from_crawler(cls, crawler: Crawler):
         object = cls(crawler)
+        crawler.signals.connect(object.spider_closed, signal=signals.spider_closed)
         return object
+
+    def spider_closed(self, spider):
+        proxies_fetch_count = self.crawler.stats.get_value("proxies/fetch_count", 0)
+        logger.info(f"爬虫关闭，共拉取代理{proxies_fetch_count}个")
 
     @property
     def redis_client(self):
@@ -108,6 +114,7 @@ class RedisProxyPoolDownloaderMiddleware:
         if not result:
             return False
         logger.debug(f"从远程代理池拉取代理{len(result)}个")
+        self.crawler.stats.inc_value("proxies/fetch_count", len(result))
         for proxy_url, proxy_timestamp in result:
             proxy_url = proxy_url.decode("utf-8")
             proxy_timestamp = int(proxy_timestamp)
