@@ -43,13 +43,15 @@ class KonneWechatBotExtension:
         retry_max_reached = stats.get("retry/max_reached", 0)
         item_dropped_count = stats.get("item_dropped_count", 0)
         total_scraped_count = item_dropped_count + item_scraped_count + redis_filtered_count
-        if (
-            total_scraped_count == 0
-            or retry_max_reached > self.failure_threshold
-            or error_log > self.log_error_threshold
-            or elapsed_time_seconds > self.elapsed_time_threshold
-            or reason != "finished"
-        ):
+        errors = {
+            "采集+去重数量为0": total_scraped_count == 0,
+            "失败请求数量超过阈值": retry_max_reached > self.failure_threshold,
+            "错误日志数量超过阈值": error_log > self.log_error_threshold,
+            "耗时超过阈值": elapsed_time_seconds > self.elapsed_time_threshold,
+            "非正常原因结束": reason not in {"finished", "shutdown"},
+        }
+        error_text = ", ".join([k for k, v in errors.items() if v])
+        if any(errors.values()):
             data = [
                 ["总耗时", elapsed_time_seconds, self.elapsed_time_threshold],
                 ["请求过滤", redis_filtered_count, "无"],
@@ -66,6 +68,8 @@ class KonneWechatBotExtension:
             table = tabulate(data, headers=headers, tablefmt="simple", colalign=("left",) * len(col_widths))
             md_content = f"""
 <font color="warning">{spider.name}</font>相关统计数据异常，请相关同事注意。
+
+异常指标: <font color="warning">{error_text}</font>
 
 <font color="comment">{project_name}</font>
 
@@ -86,7 +90,7 @@ class KonneWechatBotExtension:
             data = {
                 "msgtype": "markdown",
                 "markdown": {"content": md_content},
-                "mentioned_list": ["@all"],
+                "mentioned_mobile_list": ["@all"],
             }
             logger.info(f"爬虫{spider.name}有异常状态，已发送到企业微信")
             async with ClientSession() as session:
