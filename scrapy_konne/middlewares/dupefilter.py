@@ -3,7 +3,7 @@ from typing_extensions import deprecated
 from scrapy import Request
 from scrapy.crawler import Crawler
 import logging
-from scrapy_konne.exceptions import DuplicateRequest
+from scrapy_konne.exceptions import RedisDuplicateRequest
 from scrapy_konne.utils.fingerprint import get_url_fp
 
 
@@ -40,7 +40,7 @@ class UrlRedisDupefilterDownloaderMiddleware:
     async def process_request(self, request, spider):
         if key := await self.is_dup_request(request):
             self.crawler.stats.inc_value("dupefilter/redis", spider=spider)
-            raise DuplicateRequest(f"请求key已存在 <{key}> : {request.url}")
+            raise RedisDuplicateRequest(f"请求key已存在 <{key}> : {request.url}")
 
     def get_redis_client(self, sync=False):
         """获取redis连接，同步或异步"""
