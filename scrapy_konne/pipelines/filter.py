@@ -45,7 +45,7 @@ class RedisFilterPipeline:
         return self._redis_client
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
-        if self.redis_client.zscore(self.redis_key, get_url_fp(item.source_url)):
+        if await self.redis_client.zscore(self.redis_key, get_url_fp(item.source_url)):
             raise RedisDuplicateItem(f"url已经在redis中存在，不需要上传: {item.source_url}")
         return item
 
