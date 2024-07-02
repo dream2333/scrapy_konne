@@ -4,6 +4,7 @@ from scrapy_konne.pipelines.filter import (
     TimeFilterPipeline,
     TimeFilterWithAddToRedisPipeline,
     KonneHttpFilterPipeline,
+    RedisFilterPipeline
 )
 from scrapy_konne.pipelines.formator import (
     TimeFormatorPipeline,
@@ -21,6 +22,7 @@ from scrapy_konne.pipelines.validator import FieldValidatorPipeline
 KonneUploadorPipeline = KonneUploaderPipeline
 
 __all__ = [
+    "RedisFilterPipeline",
     "CSVWriterPipeline",
     "KonneUploaderPipeline",
     "PrintItemPipeline",

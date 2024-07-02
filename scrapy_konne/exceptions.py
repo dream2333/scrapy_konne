@@ -3,31 +3,32 @@ from scrapy.exceptions import DropItem, IgnoreRequest
 
 # item字段错误
 class ItemFieldError(Exception):
-    pass
+    """item字段错误"""
 
 
 class ItemUploadError(Exception):
-    pass
+    """item上传失败"""
 
 
 class SilentDropItem(DropItem):
-    pass
+    """静默丢弃item"""
 
 
-# item时间过期
 class ExpriedItem(DropItem):
-    pass
+    """item时间过期"""
 
 
-# 在本地去重时重复
 class MemorySetDuplicateItem(SilentDropItem):
-    pass
+    """item在内存set中去重时重复"""
 
 
-# 在康奈的http接口中重复
+class RedisDuplicateItem(SilentDropItem):
+    """item在redis库中重复"""
+
+
 class RemoteDuplicateItem(SilentDropItem):
-    pass
+    """item在康奈的http接口中重复"""
 
 
-class DuplicateRequest(IgnoreRequest):
-    """请求在redis库中重复"""
+class RedisDuplicateRequest(IgnoreRequest):
+    """reuqest在redis库中重复"""

@@ -6,9 +6,10 @@ from scrapy import Spider, signals
 from scrapy.crawler import Crawler
 from scrapy_konne.constants import LOCALE
 from scrapy_konne.items import DetailDataItem, IncreamentItem
-from scrapy_konne.exceptions import MemorySetDuplicateItem, RemoteDuplicateItem
+from scrapy_konne.exceptions import MemorySetDuplicateItem, RedisDuplicateItem, RemoteDuplicateItem
 from scrapy_konne.exceptions import ExpriedItem
 from scrapy_konne.utils.fingerprint import get_url_fp
+from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,9 @@ async def add_fp_to_redis(redis_key: str, redis_client, item: DetailDataItem | I
     await redis_client.zadd(redis_key, hash_mapping, nx=True)
 
 
-class RedisFilteredUrlUploaderPipeline:
+class RedisFilterPipeline:
     """
-    提交上传成功的Url到redis缓存，用于请求过滤。
+    在redis中对item进行过滤。
     """
 
     def __init__(self, crawler: Crawler):
@@ -38,7 +39,33 @@ class RedisFilteredUrlUploaderPipeline:
         return object
 
     @property
-    def redis_client(self):
+    def redis_client(self) -> Redis:
+        if not getattr(self, "_redis_client", None):
+            self._redis_client = getattr(self.crawler, "redis_client", None)
+        return self._redis_client
+
+    async def process_item(self, item: DetailDataItem, spider: Spider):
+        if self.redis_client.zscore(self.redis_key, get_url_fp(item.source_url)):
+            raise RedisDuplicateItem(f"url已经在redis中存在，不需要上传: {item.source_url}")
+        return item
+
+
+class RedisFilteredUrlUploaderPipeline:
+    """
+    提交上传成功的Url到redis缓存，用于request和item过滤。
+    """
+
+    def __init__(self, crawler: Crawler):
+        self.crawler = crawler
+        self.redis_key = "dupefilter:" + crawler.spider.name
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler):
+        object = cls(crawler)
+        return object
+
+    @property
+    def redis_client(self) -> Redis:
         if not getattr(self, "_redis_client", None):
             self._redis_client = getattr(self.crawler, "redis_client", None)
         return self._redis_client
