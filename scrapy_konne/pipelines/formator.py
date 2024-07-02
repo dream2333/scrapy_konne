@@ -29,6 +29,8 @@ class TimeFormatorPipeline:
     def process_item(self, item: DetailDataItem, spider: Spider):
         if isinstance(item.publish_time, str):
             item.publish_time = self.str_to_datetime_utc8(item.publish_time)
+            if isinstance(item.publish_time, str):
+                raise ItemFieldError("【测试报错】时间字符串无法被转换")
             return item
         elif isinstance(item.publish_time, int):
             item.publish_time = self.timestamp_to_datetime_utc8(item.publish_time)
