@@ -87,6 +87,9 @@ class SetFilterPipeline:
         self.url_seen.add(url)
         return item
 
+    def spider_closed(self, spider: Spider):
+        logger.debug(f"内存set数量『{len(self.url_seen)}』：{self.url_seen}")
+
 
 class TimeFilterPipeline:
     """超过时效的数据预过滤"""
