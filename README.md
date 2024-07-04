@@ -175,36 +175,35 @@ def parse_detail(self, response: HtmlResponse, item: DetailDataItem):
 ```
 同一套代码，本地环境和生产环境是区分开来的，本地的数据会被导出到`items.csv`和控制台，不会上传到生产环境，所以可以放心调试
 
-### 高级用法：请求去重和轮转代理池
+## 高级用法
+### 开启代理池
 ```python
-        ...
-        yield KRequest(
-            article["url"],
-            filter_url=item.source_url,
-            rotate_proxy=True,
-            cb_kwargs={"item": item}, 
-            callback=self.parse_detail
-        )
+yield KRequest(url,rotate_proxy=True)
+```
+注意这个请求，添加了`rotate_proxy`
 
-# 解析详情页，补全仅剩的字段
-def parse_detail(self, response: HtmlResponse, item: DetailDataItem):
-    item.content = response.xpath("string(//div[contains(@class,'index_main_content')])").get()
-    item.author = response.xpath("string(//span[contains(@class,'index_source')])").get().strip()
-    yield item
-```
-注意这个请求，添加了`filter_url`和`rotate_proxy`
-```python
-yield KRequest(
-    article["url"],
-    filter_url=item.source_url,
-    rotate_proxy=True,
-    cb_kwargs={"item": item}, 
-    callback=self.parse_detail
-)
-```
 `rotate_proxy`设为`True`时，会自动从代理池中获取代理，每次请求都会使用不同的代理，这样可以避免被封IP
 
-`filter_url`的用法则相应麻烦一些，如果这个请求可以请求到item，可以将item的`source_url`填入`filter_url`，中间件在获取到请求对象时，会到去重库中读取是否已经入库过相应的item，如果已经入库了，就不会将这个请求交给下载器下载
+### 境外代理池
+```python
+class 澳大利亚天空新闻WP(Spider):
+    name = "澳大利亚天空新闻WP"
+    site_id = 4525
+    locale = LOCALE.OTHER
+```
+在`rotate_proxy=True`时会开启代理池，但默认为境内代理池，如果需要境外代理，可以在爬虫类中添加`locale`属性，以声明这是一个境外爬虫
+
+例如此处选择 `locale = LOCALE.OTHER` 时，会自动选择境外代理池，这样可以避免被封IP
+
+### 自定义请求去重
+
+一般情况下，静态渲染的HTML页面，请求的url和item的`source_url`是一样的，框架会根据库里存有的source_url，自动对请求去重
+
+但是有些情况下，请求的url和item的`source_url`不一样，例如item是通过json请求或post请求接口获取的，导致库中的url和请求不匹配，请求的url永远也不会出现在去重库，这时候就需要自定义请求去重，为`KRequest`设置`filter_url`或`cursor`属性，将`filter_url`设置为item的`source_url`，或将`cursor`设置为自增id，这样中间件会根据`filter_url`去重
+
+中间件在获取到请求对象时，会到去重库中查询是否已经存在`filter_url`的指纹，如果已经入库了，就不会将这个请求交给下载器下载
+
+**注意**：对于需要特殊设置的自增长爬虫来说，去重使用的是`cursor`字段应当设置`cursor`，而不是`filter_url`
 
 ![去重图片](./img/img2.png)
 
