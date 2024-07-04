@@ -3,12 +3,10 @@ import traceback
 from typing import Any, Iterable, Union, cast
 from pymongo import MongoClient
 from twisted.internet.defer import Deferred
-
-from scrapy_konne.http import KRequest
 from scrapy_konne.items import IncreamentItem
 from scrapy import Spider
 from scrapy.exceptions import CloseSpider
-
+from scrapy_konne.http import KRequest
 
 class IncreaseSpiderMiddleware:
     async def process_spider_output(self, response, result, spider):
