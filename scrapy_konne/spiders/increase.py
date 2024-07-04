@@ -7,13 +7,53 @@ from scrapy_konne.items import IncreamentItem
 from scrapy import Spider
 from scrapy.exceptions import CloseSpider
 from scrapy_konne.http import KRequest
+from scrapy import signals
+from logging import getLogger
+
 
 class IncreaseSpiderMiddleware:
+    numbers = []
+    logger = getLogger("自增中间件")
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        obj = cls()
+        if not os.getenv("SCRAPYD_JOB"):
+            crawler.signals.connect(obj.spider_closed, signal=signals.spider_closed)
+        return obj
+
     async def process_spider_output(self, response, result, spider):
         async for i in result:
             if isinstance(i, IncreamentItem):
                 spider.cursor = i.increment_id
+                self.numbers.append(i.increment_id)
             yield i
+
+    def spider_closed(self, spider):
+        numbers = sorted(self.numbers)  # 示例数据
+        # 计算间隔
+        intervals = [
+            numbers[i + 1] - numbers[i] for i in range(len(numbers) - 1) if numbers[i + 1] - numbers[i] > 1
+        ]
+
+        # 计算统计指标
+        average_interval = sum(intervals) / len(intervals) if intervals else 0
+        median_interval = sorted(intervals)[len(intervals) // 2] if intervals else 0
+        max_interval = max(intervals) if intervals else 0
+        min_interval = min(intervals) if intervals else 0
+        std_dev = (
+            (sum((x - average_interval) ** 2 for x in intervals) / len(intervals)) ** 0.5 if intervals else 0
+        )
+        interval_count = len(intervals)
+
+        self.logger.info(
+            f"自增id出现断连次数: {interval_count}\n"
+            f"最大断连长度: {max_interval}\n"
+            f"最小断连长度: {min_interval}\n"
+            f"断连标准差: {std_dev}\n"
+            f"平均断连间隔长度: {average_interval}\n"
+            f"断连中位数: {median_interval}\n"
+        )
 
 
 class IncreaseSpider(Spider):
