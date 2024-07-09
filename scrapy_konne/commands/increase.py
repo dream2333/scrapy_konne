@@ -1,6 +1,9 @@
 from pprint import pprint
 import pymongo
 from scrapy.commands import ScrapyCommand
+from scrapy.utils.project import get_project_settings
+
+settings = get_project_settings()
 
 
 def add_increament_id(site_id: int, name: str, cursor: int, cursor_name="cursor"):
@@ -12,8 +15,8 @@ def add_increament_id(site_id: int, name: str, cursor: int, cursor_name="cursor"
         cursor (int): 自增id
         cursor_name (str, optional): 自增id在数据库中的键名，默认为"cursor"，一般不需要修改，某个site_id下可能有多个自增id时需要修改
     """
-    # client = pymongo.MongoClient("mongodb://localhost:27017/")
-    client = pymongo.MongoClient("mongodb://admin:knwl%402024@47.110.238.43:27017/")
+    mongo_url = settings.get("MONGO_URL")
+    client = pymongo.MongoClient(mongo_url)
     db = client["Scrapy"]
     collection = db["ids_state"]
     data = collection.find_one({"site_id": site_id}, {"_id": 0, "name": 1, cursor_name: 1, "site_id": 1})
@@ -38,7 +41,9 @@ def upload():
     try:
         site_id = int(input("请输入site_id:"))
         name = input("请输入爬虫名（不影响业务，仅用于人工提示）:")
-        cursor_name = input("请输入自增id的业务名（默认为cursor，无需干预，当一个网站可能有多个自增需求时才需要人工添加）:")
+        cursor_name = input(
+            "请输入自增id的业务名（默认为cursor，无需干预，当一个网站可能有多个自增需求时才需要人工添加）:"
+        )
         cursor = int(input("请输入初始的自增id:"))
         if not cursor_name:
             cursor_name = "cursor"
@@ -65,4 +70,3 @@ class Increase(ScrapyCommand):
 
     def run(self, args, opts):
         upload()
-
