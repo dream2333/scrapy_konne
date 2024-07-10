@@ -121,7 +121,9 @@ class IncreaseSpider(Spider):
     @property
     def start_ids(self) -> Iterable[int]:
         """获取游标前后范围内的id"""
-        for i in range(self.cursor - self.offset[0], self.cursor + self.offset[1]):
+        for i in range(self.cursor, self.cursor + self.offset[1] + 1):
+            yield i
+        for i in range(self.cursor - self.offset[0], self.cursor):
             yield i
 
     @property
