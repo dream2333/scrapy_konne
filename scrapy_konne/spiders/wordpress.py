@@ -6,7 +6,7 @@ from scrapy_konne import DetailDataItem
 
 class WordPressSpider(Spider):
     name: str
-    newest_count = 50
+    newest_count = 100
     exclude_pattern = []
     posts_url: str
     index_url: str
