@@ -186,7 +186,7 @@ class KonneExtraTerritoryUploaderPipeline:
         if item.media_type:
             info["mediaType"] = item.media_type  # 媒体类型
         if getattr(spider, "language", None):  # 语言
-            info["language"] = (spider.language.value,)
+            info["language"] = spider.language.value
         return aio_pika.Message(body=orjson.dumps(info))
 
     async def process_item(self, item: DetailDataItem, spider: Spider):
