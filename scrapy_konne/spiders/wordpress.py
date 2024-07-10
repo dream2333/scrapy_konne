@@ -12,6 +12,7 @@ class WordPressSpider(Spider):
     index_url: str
     site_id: int
     page_crawl_id: int
+    media_type: int = 1
 
     def start_requests(self):
         if not getattr(self, "posts_url", None) and not getattr(self, "index_url", None):
@@ -37,7 +38,7 @@ class WordPressSpider(Spider):
                 content=content,
                 source=self.name,
                 source_url=url,
-                page_crawl_id=19432,
-                media_type=1,
+                page_crawl_id=self.page_crawl_id,
+                media_type=self.media_type,
             )
             yield item

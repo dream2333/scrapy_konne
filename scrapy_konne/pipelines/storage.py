@@ -182,9 +182,8 @@ class KonneExtraTerritoryUploaderPipeline:
             "sourceSite": "",  # 来源网站
             "sourceUrl": item.source_url,
             "columnId": item.page_crawl_id,  # 采集栏目ID
+            "mediaType": item.media_type,
         }
-        if item.media_type:
-            info["mediaType"] = item.media_type  # 媒体类型
         if getattr(spider, "language", None):  # 语言
             info["language"] = spider.language.value
         return aio_pika.Message(body=orjson.dumps(info))
