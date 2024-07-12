@@ -8,7 +8,7 @@ from scrapy.core.downloader.handlers.http11 import TunnelError
 from scrapy.exceptions import NotConfigured
 from scrapy_konne.constants import LOCALE
 from scrapy import signals
-
+from scrapy.exceptions import IgnoreRequest
 
 logger = logging.getLogger("代理池中间件")
 
@@ -76,7 +76,7 @@ class RedisProxyPoolDownloaderMiddleware:
             request.meta["proxy"] = await self.get_proxy()
 
     async def process_exception(self, request, exception, spider):
-        if request.meta.get("rotate_proxy"):
+        if request.meta.get("rotate_proxy") and not isinstance(exception, IgnoreRequest):
             logger.debug(f"请求异常，切换代理 {request}: {exception}")
             request.meta["proxy"] = await self.get_proxy()
             for Exce in self.catch_exceptions:
