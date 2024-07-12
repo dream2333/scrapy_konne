@@ -96,8 +96,6 @@ class IncreaseSpider(Spider):
         ):
             raise ValueError("url_template和start_requests之中至少有一个需要被重载")
         if self._is_production:
-            if not getattr(self, "site_id", None):
-                raise ValueError("请设置site_id")
             if not getattr(self, "cursor_name", None):
                 raise ValueError("请设置cursor_name")
         else:
@@ -161,7 +159,11 @@ class IncreaseSpider(Spider):
     def init_mongo_cursor(self):
         self._cursor = self.mongo_cursor
         self._previous_round_cursor = self._cursor
-        self.logger.info(f"当前id游标: {self._cursor}，前后偏移范围：{self.offset}")
+        self.logger.info(
+            f"当前id游标: {self._cursor}，"
+            f"抓取范围：{self._cursor-self.offset[0]},{self._cursor+self.offset[1]}  "
+            f"前后偏移范围：{self.offset}"
+        )
 
     def init_mock_cursor(self):
         self._cursor = self.mock_cursor
