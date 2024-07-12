@@ -34,7 +34,7 @@ class PrintItemPipeline:
         elif item.publish_time > self.newest_item.publish_time:
             self.newest_item = item
         # 输出当前item到日志
-        message = f"{item.publish_time} | [{item.title}] | {item.source} | {item.source_url} | 作者: {item.author} | {repr(item.content)} | {item.video_url} media_type: {item.media_type} page_crawl_id:{item.page_crawl_id}"
+        message = f"文章时间： {item.publish_time} | [{item.title}] | {item.source} | {item.source_url} | 作者: {item.author} | {repr(item.content)} | 视频链接： {item.video_url} | media_type: {item.media_type} page_crawl_id:{item.page_crawl_id}"
         self.logger.info(message)
         return item
 
