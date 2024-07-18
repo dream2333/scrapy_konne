@@ -2,7 +2,7 @@ import re
 from scrapy import Request, Spider
 from scrapy.http import HtmlResponse
 from scrapy_konne import DetailDataItem
-
+from urllib.parse import urljoin
 
 class WordPressSpider(Spider):
     name: str
@@ -23,9 +23,11 @@ class WordPressSpider(Spider):
 
     def start_requests(self):
         if getattr(self, "index_url", None):
-            url = f"{self.index_url}/wp-json/wp/v2/posts?page=1&per_page={self.newest_count}"
+            relative_url = f"/wp-json/wp/v2/posts?page=1&per_page={self.newest_count}"
+            url = urljoin(self.index_url,relative_url)
         else:
-            url = f"{self.posts_url}?page=1&per_page={self.newest_count}"
+            relative_url = f"?page=1&per_page={self.newest_count}"
+            url = urljoin(self.index_url,relative_url)
         yield Request(url)
 
     def parse(self, response: HtmlResponse):
