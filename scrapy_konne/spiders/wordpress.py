@@ -7,16 +7,21 @@ from scrapy_konne import DetailDataItem
 class WordPressSpider(Spider):
     name: str
     newest_count = 100
-    exclude_pattern = []
+    exclude_patterns = []
     posts_url: str
     index_url: str
     site_id: int
-    page_crawl_id: int
+    page_crawl_id: int = 0
     media_type: int = 1
 
-    def start_requests(self):
+    def __init__(self, name: str | None = None, **kwargs: re.Any):
+        super().__init__(name, **kwargs)
         if not getattr(self, "posts_url", None) and not getattr(self, "index_url", None):
             raise ValueError("请设置posts_url或index_url")
+        # 正则表达式预编译
+        self.exclude_patterns_compiled = [re.compile(pattern) for pattern in self.exclude_patterns]
+
+    def start_requests(self):
         if getattr(self, "index_url", None):
             url = f"{self.index_url}/wp-json/wp/v2/posts?page=1&per_page={self.newest_count}"
         else:
@@ -26,7 +31,7 @@ class WordPressSpider(Spider):
     def parse(self, response: HtmlResponse):
         for article in response.json():
             url = article["link"]
-            if any(re.search(pattern, url) for pattern in self.exclude_pattern):
+            if any(pattern.search(url) for pattern in self.exclude_patterns_compiled):
                 self.logger.info(f"跳过不需要的文章: {url}")
                 continue
             title = article["title"]["rendered"]
