@@ -14,7 +14,7 @@ class WordPressSpider(Spider):
     page_crawl_id: int = 0
     media_type: int = 1
 
-    def __init__(self, name: str | None = None, **kwargs: re.Any):
+    def __init__(self, name: str | None = None, **kwargs):
         super().__init__(name, **kwargs)
         if not getattr(self, "posts_url", None) and not getattr(self, "index_url", None):
             raise ValueError("请设置posts_url或index_url")
