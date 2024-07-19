@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 
 class WordPressSpider(Spider):
     name: str
-    newest_count = 100
+    newest_count = 50
     exclude_patterns = []
     posts_url: str
     index_url: str
