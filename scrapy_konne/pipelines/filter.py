@@ -179,7 +179,7 @@ class KonneTerritoryFilterPipeline:
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
-        upload_ip = crawler.settings.get("UPLOAD_DATA_IP")
+        upload_ip = crawler.settings.get("DEDUP_DATA_IP")
         filter = cls()
         filter.uri_deduplication_api = f"http://{upload_ip}/QuChong/ExistUrl"
         crawler.signals.connect(filter.spider_closed, signal=signals.spider_closed)
