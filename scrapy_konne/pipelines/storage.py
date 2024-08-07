@@ -101,10 +101,11 @@ class KonneTerritoryUploaderPipeline:
         upload_ip = crawler.settings.get("UPLOAD_DATA_IP")
         cls.upload_and_filter_api = f"http://{upload_ip}/Data/AddDataAndQuChong"
         uploader = cls()
+        crawler.signals.connect(uploader.spider_opened, signal=signals.spider_opened)
         crawler.signals.connect(uploader.spider_closed, signal=signals.spider_closed)
         return uploader
 
-    def open_spider(self, spider: Spider):
+    async def spider_opened(self, spider: Spider):
         self.session = ClientSession()
 
     async def spider_closed(self, spider: Spider):
