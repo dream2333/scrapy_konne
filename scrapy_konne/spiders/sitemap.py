@@ -21,8 +21,11 @@ class Sitemap(ScrapySitemap):
                 elif name == "news":
                     ns = {"news": el.nsmap["news"]}
                     pub_date = el.xpath("./news:publication_date/text()", namespaces=ns)
+                    title = el.xpath("./news:title/text()", namespaces=ns)
                     if pub_date:
                         d["publication_date"] = pub_date[0]
+                    if title:
+                        d["title"] = title[0]
                 else:
                     d[name] = el.text.strip() if el.text else ""
 
@@ -68,12 +71,13 @@ class SitemapSpider(ScrapySitemapSpider):
                         modtime = parse(time_str)
                         if datetime.now().astimezone() - modtime > timedelta(days=self.expired_days):
                             continue
+                    title = entry.get("title")
                     for r, c in self._cbs:
                         if r.search(entry["loc"]):
                             yield KRequest(
                                 entry["loc"],
                                 callback=c,
-                                meta={"lastmod": time_str},
+                                meta={"lastmod": time_str, "title": title},
                             )
                             break
 
