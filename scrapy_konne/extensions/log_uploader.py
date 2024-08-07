@@ -55,11 +55,12 @@ class IncreaseLogUploader(BaseLogUploader):
         self.site_id = site_id
         self.client_id = client_id
         self.log_url = log_url
-        self.session = ClientSession()
+        self.session = None
         self.reset_id_url = reset_id_url
 
     def spider_opened(self, spider):
         connect_signal = spider.crawler.signals.connect
+        self.session = ClientSession()
         connect_signal(self.item_scraped, signal=signals.item_passed)
         self.log_success_count = 0
         self.logger.info("开启自增日志拓展")
@@ -124,7 +125,7 @@ class SectionLogUploader(BaseLogUploader):
         self.site_id = site_id
         self.client_id = client_id
         self.log_url = log_url
-        self.session = ClientSession()
+        self.session = None
         self.interval = interval
         self.log_success_count = 0
         self.timer = None
@@ -146,6 +147,7 @@ class SectionLogUploader(BaseLogUploader):
 
     async def spider_opened(self, spider):
         connect_signal = spider.crawler.signals.connect
+        self.session = ClientSession()
         connect_signal(self.item_scraped, signal=signals.item_passed)
         connect_signal(self.request_scheduled, signal=signals.request_scheduled)
         self.timer = asyncio.get_event_loop().create_task(self.log_timer())
