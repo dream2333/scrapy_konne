@@ -20,10 +20,12 @@ python-dateutil = "^2.9.0.post0"
 lxml-html-clean = "^0.1.1"
 aio-pika = "^9.4.1"
 orjson = "^3.10.5"
-scrapy-playwright = {version = "^0.0.36", optional = true}
+scrapy-playwright = { version = "^0.0.36", optional = true }
+scrapy-impersonate = { version = "^1.3.1", optional = true }
 
 [tool.poetry.extras]
 playwright = ["scrapy-playwright"]
+curl-cffi = ["scrapy-impersonate"]
 
 [build-system]
 requires = ["poetry-core"]
