@@ -1,3 +1,4 @@
+from scrapy_konne.utils.retry import async_retry
 import time
 from aiohttp import ClientSession
 import logging
@@ -186,6 +187,7 @@ class KonneTerritoryFilterPipeline:
         crawler.signals.connect(filter.spider_closed, signal=signals.spider_closed)
         return filter
 
+    @async_retry()
     async def is_url_exist(self, url):
         filter_url = self.uri_deduplication_api
         params = {"url": url}
