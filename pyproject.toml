@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scrapy-konne"
-version = "0.4.5"
+version = "0.4.6"
 description = ""
 authors = ["dream2333 <vincentqng@gmail.com>"]
 readme = "README.md"
@@ -21,11 +21,11 @@ lxml-html-clean = "^0.1.1"
 aio-pika = "^9.4.1"
 orjson = "^3.10.5"
 scrapy-playwright = { version = "^0.0.36", optional = true }
-scrapy-impersonate = { version = "^1.3.1", optional = true }
+scrapy-impersonate = { git = "https://github.com/dream2333/scrapy-impersonate.git", branch = "master", optional = true }
 
 [tool.poetry.extras]
 playwright = ["scrapy-playwright"]
-curl-cffi = ["scrapy-impersonate"]
+tls = ["scrapy-impersonate"]
 
 [build-system]
 requires = ["poetry-core"]
