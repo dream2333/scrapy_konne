@@ -1,13 +1,14 @@
-# scrapy_konne
+# scrapy-konne
 
-小组内部使用Scrapy项目
+scrapy-onne是一个基于Scrapy的爬虫框架，提供了一些便捷的功能，如指纹伪装、后端渲染、自动去重、自动化部署、日志提交、数据类型强校验、日期格式化等，可以大大减少爬虫的开发时间
 
-## 0.4.0新增
-新增全球眼境外项目支持
+## 0.4.6新增
+添加指纹欺骗，添加对`aiohttp^3.10.1`的支持
 
 ## 主要组件
 
 - `core/`: 包含了项目的核心功能，如中间件、调度器、序列化器、信号和爬虫。
+- `downloader/`: 包含了项目的下载器，对指纹进行处理，支持tls指纹和http2指纹欺骗
 - `middlewares/`: 包含了项目的中间件，如 JavaScript 和代理中间件。
 - `http/` 包含了自定义的请求对象。
 - `pipelines/`: 包含了项目的管道，用于对item进行格式化、校验、去重、上传等。
@@ -176,7 +177,7 @@ def parse_detail(self, response: HtmlResponse, item: DetailDataItem):
 同一套代码，本地环境和生产环境是区分开来的，本地的数据会被导出到`items.csv`和控制台，不会上传到生产环境，所以可以放心调试
 
 ## 高级用法
-### 开启代理池
+### 开启轮转代理池
 ```python
 yield KRequest(url,rotate_proxy=True)
 ```
@@ -208,6 +209,63 @@ class 澳大利亚天空新闻WP(Spider):
 ![去重图片](./img/img2.png)
 
 如图为东方财富网案例，有一万多个请求被去重器去重掉了，整个爬虫仅运行了10秒，仅有754个请求经过了下载器。如果不添加filter_url，则所有的请求都会被下载，最后只有在入库前才会在pipeline中去重，这样会浪费大量的资源
+
+### tls指纹及http2指纹欺骗
+当请求部分使用了cloudflare和akamai的网站时，waf会对请求客户端的指纹进行校验，如果探测到请求来源不是浏览器，则会拒绝访问，安装时添加`scrapy-konne[tls]`可选包，可以使框架支持tls指纹和http2指纹欺骗
+
+
+开启tls指纹和http2指纹欺骗，此时所有通过下载器的请求会自动模拟chrome的指纹
+```python
+# settings.py 中添加
+"DOWNLOAD_HANDLERS": {
+    "http": "scrapy_konne.downloader.handler.ImpersonateDownloadHandler",
+    "https": "scrapy_konne.downloader.handler.ImpersonateDownloadHandler",
+},
+```
+*可通过 https://tls.browserleaks.com/tls 查看当前使用的指纹
+
+#### 自定义指纹（可选）
+```python
+Request(url,meta={"impersonate":"chrome110"})
+```
+
+可用的指纹有：
+- chrome99
+- chrome100
+- chrome101
+- chrome104
+- chrome107
+- chrome110
+- chrome116
+- chrome119
+- chrome120
+- chrome123
+- chrome124
+- chrome99_android
+- edge99
+- edge101
+- safari15_3
+- safari15_5
+- safari17_0
+- safari17_2_ios
+
+### 浏览器后端渲染支持
+部分网页需要通过js的浏览器环境检测，或进行前端渲染，安装时添加`scrapy-konne[playwright]`可选包，可以使用playwrght自动处理请求进行前端渲染
+
+```python
+# settings.py 中添加
+"DOWNLOAD_HANDLERS": {
+    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+}
+...
+# 使当前请求通过浏览器渲染
+yield scrapy.Request(
+    url=f"https://httpbin.org/delay/1",
+    meta={"playwright": True},
+)
+```
+
 
 ## 本地运行
 两种方式，命令行或者使用dev.py运行
