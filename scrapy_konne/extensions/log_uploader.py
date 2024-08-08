@@ -59,7 +59,7 @@ class IncreaseLogUploader(BaseLogUploader):
         self.reset_id_url = reset_id_url
         self.log_success_count = 0
 
-    def spider_opened(self, spider):
+    async def spider_opened(self, spider):
         connect_signal = spider.crawler.signals.connect
         self.session = ClientSession()
         connect_signal(self.item_scraped, signal=signals.item_passed)
