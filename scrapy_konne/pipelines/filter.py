@@ -190,9 +190,8 @@ class KonneTerritoryFilterPipeline:
         filter_url = self.uri_deduplication_api
         params = {"url": url}
         async with self.session.get(filter_url, params=params) as response:
-            result = await response.json()
-            if isinstance(result, int):
-                return bool(result)
+            result = int(await response.text())
+            return bool(result)
 
     @property
     def redis_client(self):
