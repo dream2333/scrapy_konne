@@ -1,4 +1,5 @@
 from .dupefilter import UrlRedisDupefilterMiddleware,UrlRedisDupefilterDownloaderMiddleware
+from .impersonate import ImpersonateDownloaderMiddleware
 from .proxypool import (
     RedisProxyPoolDownloaderMiddleware,
     ProxyPoolDownloaderMiddleware,
@@ -6,6 +7,7 @@ from .proxypool import (
 )
 
 __all__ = [
+    "ImpersonateDownloaderMiddleware"
     "UrlRedisDupefilterMiddleware",
     "UrlRedisDupefilterDownloaderMiddleware"
     "RedisProxyPoolDownloaderMiddleware",
