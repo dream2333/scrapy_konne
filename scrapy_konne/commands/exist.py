@@ -30,7 +30,7 @@ def url_is_exist(url):
     判断url是否存在  1是有, 0是没有
     :return: True or False
     """
-    upload_ip = settings.get("UPLOAD_DATA_IP")
+    upload_ip = settings.get("DEDUP_DATA_IP")
     base_url = f"http://{upload_ip}/QuChong/ExistUrl?"
     params = {"url": url}
     resp = requests.get(url=base_url, params=params, timeout=10)
