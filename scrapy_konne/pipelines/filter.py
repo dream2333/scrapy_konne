@@ -192,6 +192,8 @@ class KonneTerritoryFilterPipeline:
         filter_url = self.uri_deduplication_api
         params = {"url": url}
         async with self.session.get(filter_url, params=params) as response:
+            if not response.status == 200:
+                raise Exception(f"konne去重接口错误：{response.status}")
             result = int(await response.text())
             return bool(result)
 
