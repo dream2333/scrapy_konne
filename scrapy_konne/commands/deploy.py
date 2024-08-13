@@ -5,7 +5,7 @@ from scrapy.commands import ScrapyCommand
 
 
 def deploy_project():
-    command = ["scrapyd-deploy"]
+    command = ["scrapyd-deploy","-a"]
     process = subprocess.Popen(command, stdout=subprocess.PIPE)
     output, error = process.communicate()
 
