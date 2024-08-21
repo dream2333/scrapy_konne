@@ -31,7 +31,7 @@ def url_is_exist(url):
     :return: True or False
     """
     upload_ip = settings.get("DEDUP_DATA_IP")
-    base_url = f"http://{upload_ip}/QuChong/ExistUrl?"
+    base_url = f"http://{upload_ip}/BanKuaiQuChong/ExistUrl"
     params = {"url": url}
     resp = requests.get(url=base_url, params=params, timeout=10)
     if resp.text == "1":
