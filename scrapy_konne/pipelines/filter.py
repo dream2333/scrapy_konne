@@ -32,7 +32,8 @@ class RedisFilterPipeline:
 
     def __init__(self, crawler: Crawler):
         self.crawler = crawler
-        self.redis_key = "dupefilter:" + crawler.spider.name
+        dup_key = getattr(crawler.spider, "redis_dup_key", None)
+        self.redis_key = "dupefilter:" + (dup_key or crawler.spider.name)
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
@@ -58,7 +59,8 @@ class RedisFilteredUrlUploaderPipeline:
 
     def __init__(self, crawler: Crawler):
         self.crawler = crawler
-        self.redis_key = "dupefilter:" + crawler.spider.name
+        dup_key = getattr(crawler.spider, "redis_dup_key", None)
+        self.redis_key = "dupefilter:" + (dup_key or crawler.spider.name)
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
@@ -117,7 +119,8 @@ class TimeFilterWithAddToRedisPipeline(TimeFilterPipeline):
     def __init__(self, crawler: Crawler) -> None:
         self.expired_time = crawler.settings.getint("ITEM_FILTER_TIME", 72)
         self.crawler = crawler
-        self.redis_key = "dupefilter:" + crawler.spider.name
+        dup_key = getattr(crawler.spider, "redis_dup_key", None)
+        self.redis_key = "dupefilter:" + (dup_key or crawler.spider.name)
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
@@ -172,7 +175,8 @@ class KonneTerritoryFilterPipeline:
 
     async def spider_opened(self, spider: Spider):
         self.crawler = spider.crawler
-        self.redis_key = "dupefilter:" + spider.name
+        dup_key = getattr(spider, "redis_dup_key", None)
+        self.redis_key = "dupefilter:" + (dup_key or spider.name)
         self.session = ClientSession()
 
     async def spider_closed(self, spider: Spider):

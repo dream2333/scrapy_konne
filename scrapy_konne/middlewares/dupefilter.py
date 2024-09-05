@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 class UrlRedisDupefilterDownloaderMiddleware:
     def __init__(self, crawler: Crawler):
         self.crawler = crawler
-        self.redis_key = "dupefilter:" + crawler.spider.name
+        dup_key = getattr(crawler.spider, "redis_dup_key", None)
+        self.redis_key = "dupefilter:" + (dup_key or crawler.spider.name)
         self.loop = asyncio.get_event_loop()
 
     @classmethod
@@ -54,7 +55,8 @@ class UrlRedisDupefilterMiddleware:
 
     def __init__(self, crawler: Crawler):
         self.crawler = crawler
-        self.redis_key = "dupefilter:" + crawler.spider.name
+        dup_key = getattr(crawler.spider, "redis_dup_key", None)
+        self.redis_key = "dupefilter:" + (dup_key or crawler.spider.name)
         self.loop = asyncio.get_event_loop()
 
     @classmethod
