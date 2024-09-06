@@ -22,6 +22,7 @@ aio-pika = "^9.4.1"
 orjson = "^3.10.5"
 scrapy-playwright = { version = "^0.0.36", optional = true }
 scrapy-impersonate = { git = "https://github.com/jxlil/scrapy-impersonate.git", branch = "master", optional = true }
+fake-useragent = "^1.5.1"
 
 [tool.poetry.extras]
 playwright = ["scrapy-playwright"]

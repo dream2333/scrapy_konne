@@ -5,8 +5,11 @@ from .proxypool import (
     ProxyPoolDownloaderMiddleware,
     ExtraTerritoryProxyDownloaderMiddleware,
 )
+from .fakeua import FakeUADownloaderMiddleware
+
 
 __all__ = [
+    "FakeUADownloaderMiddleware",
     "ImpersonateDownloaderMiddleware"
     "UrlRedisDupefilterMiddleware",
     "UrlRedisDupefilterDownloaderMiddleware"
