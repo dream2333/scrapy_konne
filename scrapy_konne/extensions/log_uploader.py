@@ -71,7 +71,7 @@ class IncreaseLogUploader(BaseLogUploader):
             if result:
                 self.logger.info(f"重置自增长id为{spider.cursor}成功")
             else:
-                self.logger.warn(f"重置自增长id为{spider.cursor}失败")
+                self.logger.warning(f"重置自增长id为{spider.cursor}失败")
         else:
             self.logger.info("本轮无新数据，无需重置自增长id")
         await self.session.close()
@@ -112,7 +112,7 @@ class IncreaseLogUploader(BaseLogUploader):
         if result:
             self.log_success_count += 1
         else:
-            self.logger.warn(f"[{self.client_id}] 自增日志提交失败")
+            self.logger.warning(f"[{self.client_id}] 自增日志提交失败")
 
 
 class SectionLogUploader(BaseLogUploader):
@@ -185,7 +185,7 @@ class SectionLogUploader(BaseLogUploader):
             self.logger.info(f"[{self.client_id}] 日志提交成功: {formatted_stats}")
             self.log_success_count += 1
         else:
-            self.logger.warn(f"[{self.client_id}] 日志提交失败,当前状态为: {formatted_stats}")
+            self.logger.warning(f"[{self.client_id}] 日志提交失败,当前状态为: {formatted_stats}")
 
     async def send_log(self, stat):
         """提交日志"""
@@ -195,3 +195,30 @@ class SectionLogUploader(BaseLogUploader):
                 if result.get("code") == 0:
                     return True
         return False
+
+
+class MixedLogUploader(SectionLogUploader):
+    """混合日志上传器，用于提交板块日志的自增爬虫"""
+
+    logger = logging.getLogger("混合日志")
+    logger_type = LOG_TYPE.MIXED
+
+    def reset_stats(self):
+        self.stats["AddCount"] = 0
+        self.stats["TotalCount"] = 0
+
+    def item_scraped(self, item, response, spider):
+        self.stats["AddCount"] += 1
+        self.stats["TotalCount"] += 1
+
+    async def log_stats(self):
+        if self.stats["AddCount"] != 0:
+            """提交日志并输出"""
+            formatted_stats = f'item数：{self.stats["AddCount"]} 请求数：{self.stats["TotalCount"]}'
+            result = await self.send_log(self.stats)
+            if result:
+                self.reset_stats()
+                self.logger.info(f"[{self.client_id}] 日志提交成功: {formatted_stats}")
+                self.log_success_count += 1
+            else:
+                self.logger.warning(f"[{self.client_id}] 日志提交失败,当前状态为: {formatted_stats}")
