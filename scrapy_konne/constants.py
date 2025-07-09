@@ -1,5 +1,4 @@
 from enum import Enum
-import json
 
 
 class LOG_TYPE(Enum):
@@ -9,11 +8,13 @@ class LOG_TYPE(Enum):
     - NO_LOG: 不开启远程日志记录
     - SECTION: 板块
     - INCREASE: 自增
+    - MIXED: 提交板块日志的自增爬虫（暂无用）
     """
 
     NO_LOG = -1
     SECTION = 0
     INCREASE = 1
+    MIXED = 2
 
 
 class LANG(Enum):

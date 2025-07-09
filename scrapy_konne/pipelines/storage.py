@@ -158,10 +158,16 @@ class KonneExtraTerritoryUploaderPipeline:
 
     async def spider_opened(self, spider):
         logger.info("正在打开rabbitmq上传管道")
-        self.pika_connection = await aio_pika.connect_robust(url=self.upload_url)
-        self.channel = await self.pika_connection.channel()
-        self.exchange = await self.channel.get_exchange(self.exchange_name)
-        logger.info("rabbitmq上传管道已打开")
+        for _ in range(3):
+            try:
+                self.pika_connection = await aio_pika.connect_robust(url=self.upload_url)
+                self.channel = await self.pika_connection.channel()
+                self.exchange = await self.channel.get_exchange(self.exchange_name)
+                logger.info("rabbitmq上传管道已打开")
+                return
+            except Exception as e:
+                logger.warning(f"连接失败，重试中... ({_ + 1}/{3})")
+        spider.crawler.engine.close_spider(spider, "redis_error")
 
     async def spider_closed(self, spider, reason):
         logger.info("正在关闭rabbitmq上传管道")

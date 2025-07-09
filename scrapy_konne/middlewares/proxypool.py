@@ -102,7 +102,7 @@ class RedisProxyPoolDownloaderMiddleware:
                     if fetch_failed_times >= 5:
                         logger.error("代理池拉取失败次数大于等于5次")
                         fetch_failed_times = 0
-                    logger.warn(f"代理池为空，等待{self.empty_wait_time}秒")
+                    logger.warning(f"代理池为空，等待{self.empty_wait_time}秒")
                     await asyncio.sleep(self.empty_wait_time)
 
     async def fetch_proxies(self):
